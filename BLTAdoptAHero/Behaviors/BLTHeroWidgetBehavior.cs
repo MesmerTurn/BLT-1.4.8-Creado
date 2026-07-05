@@ -138,10 +138,11 @@ namespace BLTAdoptAHero
                 vm.RetinueDead = retinueDead;
                 vm.GoldText = Abbrev(wonGold);
                 vm.XpText = Abbrev(wonXP);
-                vm.ClassLevel = hero?.Level ?? 0; // placeholder: no numeric BLT class level available, using native hero level
-                int filledDots = Math.Min(vm.ClassLevel, MaxLevelDots);
+                vm.ClassLevel = hero?.Level ?? 0; // native hero level, no longer used for dots (kept for potential future use)
+                int equipTier = (BLTAdoptAHeroCampaignBehavior.Current?.GetEquipmentTier(hero) ?? -1) + 1; // convert 0-7 to 1-8; -1+1=0 if unavailable
+                int filledDots = Math.Min(Math.Max(equipTier, 0), MaxLevelDots);
                 vm.LevelDotsText = new string('●', filledDots) + new string('○', MaxLevelDots - filledDots);
-                vm.LevelText = $"lvl{vm.ClassLevel}";
+                vm.LevelText = $"T{equipTier}";
 
                 vm.Companions = BLTExternalStats.Companions(hero);
                 vm.DamageText = Abbrev(BLTExternalStats.Damage(hero));
