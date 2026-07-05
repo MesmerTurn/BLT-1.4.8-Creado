@@ -60,7 +60,7 @@ namespace BLTAdoptAHero.UI
                 Level = "Level",
                 Kills = "{=AM2zlkem}Kills".Translate(),
                 Retinue = "Retinue",
-                Companions = "Companions",
+                Companions = "Clone",
                 Gold = "{=o0Q8Y1Qg}Gold".Translate(),
                 XP = "{=VtEJiMWy}XP".Translate(),
                 Damage = "Damage",
