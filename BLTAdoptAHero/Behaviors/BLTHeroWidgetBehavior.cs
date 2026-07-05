@@ -521,5 +521,77 @@ namespace BLTAdoptAHero
             get => _statsLine;
             set { if (_statsLine != value) { _statsLine = value; OnPropertyChanged(nameof(StatsLine)); } }
         }
+
+        private string _levelDotsText;
+        [DataSourceProperty]
+        public string LevelDotsText
+        {
+            get => _levelDotsText;
+            set { if (_levelDotsText != value) { _levelDotsText = value; OnPropertyChanged(nameof(LevelDotsText)); } }
+        }
+
+        private string _levelText;
+        [DataSourceProperty]
+        public string LevelText
+        {
+            get => _levelText;
+            set { if (_levelText != value) { _levelText = value; OnPropertyChanged(nameof(LevelText)); } }
+        }
+
+        private float _barWidth;
+        [DataSourceProperty]
+        public float BarWidth
+        {
+            get => _barWidth;
+            set { if (_barWidth != value) { _barWidth = value; OnPropertyChanged(nameof(BarWidth)); } }
+        }
+
+        private float _barMaxHeight;
+        [DataSourceProperty]
+        public float BarMaxHeight
+        {
+            get => _barMaxHeight;
+            set { if (_barMaxHeight != value) { _barMaxHeight = value; OnPropertyChanged(nameof(BarMaxHeight)); } }
+        }
+
+        private float _adrenalineBarFillHeight;
+        [DataSourceProperty]
+        public float AdrenalineBarFillHeight
+        {
+            get => _adrenalineBarFillHeight;
+            set { if (_adrenalineBarFillHeight != value) { _adrenalineBarFillHeight = value; OnPropertyChanged(nameof(AdrenalineBarFillHeight)); } }
+        }
+
+        private float _powerBarFillHeight;
+        [DataSourceProperty]
+        public float PowerBarFillHeight
+        {
+            get => _powerBarFillHeight;
+            set { if (_powerBarFillHeight != value) { _powerBarFillHeight = value; OnPropertyChanged(nameof(PowerBarFillHeight)); } }
+        }
+
+        private float _resurrectBarHeight;
+        [DataSourceProperty]
+        public float ResurrectBarHeight
+        {
+            get => _resurrectBarHeight;
+            set { if (_resurrectBarHeight != value) { _resurrectBarHeight = value; OnPropertyChanged(nameof(ResurrectBarHeight)); } }
+        }
+
+        private float _resurrectBarMaxWidth;
+        [DataSourceProperty]
+        public float ResurrectBarMaxWidth
+        {
+            get => _resurrectBarMaxWidth;
+            set { if (_resurrectBarMaxWidth != value) { _resurrectBarMaxWidth = value; OnPropertyChanged(nameof(ResurrectBarMaxWidth)); } }
+        }
+
+        private float _resurrectBarFillWidth;
+        [DataSourceProperty]
+        public float ResurrectBarFillWidth
+        {
+            get => _resurrectBarFillWidth;
+            set { if (_resurrectBarFillWidth != value) { _resurrectBarFillWidth = value; OnPropertyChanged(nameof(ResurrectBarFillWidth)); } }
+        }
     }
 }
