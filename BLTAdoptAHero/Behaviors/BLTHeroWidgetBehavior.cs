@@ -96,7 +96,8 @@ namespace BLTAdoptAHero
             //Log.Trace("BLTAdoptAHero: Initializing UI.");
             this._vm = new HeroWidgetVM();
             this._layer = new GauntletLayer("BLTHeroWidgetLayer", 15, false);
-            this._gauntletMovie = this._layer.LoadMovie("BLTHeroNametag", _vm);
+            string movieName = configUseNewLayout ? "BLTHeroNametagV2" : "BLTHeroNametag";
+            this._gauntletMovie = this._layer.LoadMovie(movieName, _vm);
             this.MissionScreen.AddLayer(_layer);
             //Log.Trace("BLTAdoptAHero: Layer added to MissionScreen.");
             //Log.Trace($"BLTAdoptAHero: Movie loaded. RootWidget is Null? {_gauntletMovie.RootWidget == null}");
