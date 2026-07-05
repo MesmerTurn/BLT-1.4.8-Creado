@@ -1,0 +1,60 @@
+﻿﻿<div id='mission-container'>
+    <div id='mission-heroes' class='drop-shadow'>
+        <div class='mission-hero' v-for='hero in sortedHeroes' v-bind:key='hero.Name'>
+            <div class='mission-hero-inner'
+                 v-bind:class="[hero.IsPlayerSide ? 'mission-hero-player-side' : 'mission-hero-other-side', 'mission-hero-tournament-side-' + hero.TournamentTeam]">
+                <div class='mission-hero-health'
+                     v-bind:style="{ width: (hero.HP * 100 / hero.MaxHP) + '%' }"></div>
+
+                <!-- TOP: resurrection / summon cooldown bar -->
+                <div v-show='hero.CooldownSecondsRemaining > 0 || hero.CooldownFractionRemaining < 1'
+                     class='mission-hero-cooldown-bar'>
+                    <div class='mission-hero-cooldown-fill'
+                         v-bind:style="{ width: Math.min(hero.CooldownFractionRemaining, 1) * 100 + '%' }"></div>
+                    <div class='mission-hero-cooldown-label drop-shadow-2'>
+                        <span v-if='hero.CooldownSecondsRemaining > 0'>{{Math.round(hero.CooldownSecondsRemaining)}}s</span>
+                        <span v-else-if='hero.CooldownFractionRemaining >= 1'>respawn</span>
+                    </div>
+                </div>
+
+                <!-- LEFT vertical bar: adrenaline -->
+                <div v-show='hero.AdrenalineFractionRemaining > 0'
+                     class='mission-hero-adrenaline-remaining'
+                     v-bind:style="{ height: hero.AdrenalineFractionRemaining * 100 + '%' }"></div>
+
+                <!-- RIGHT vertical bar: power -->
+                <div v-show='hero.ActivePowerFractionRemaining > 0'
+                     class='mission-hero-active-power-remaining'
+                     v-bind:style="{ height: hero.ActivePowerFractionRemaining * 100 + '%' }"></div>
+
+                <div class='mission-hero-name-row'>
+                    <div class='mission-hero-name drop-shadow-2'
+                         v-bind:class="'mission-hero-state-' + hero.State">{{hero.Name}}</div>
+                </div>
+                <div class='mission-hero-level'>
+                    <span v-for='n in 6' class='mission-hero-level-dot' v-bind:class="{ 'mission-hero-level-dot-on': n <= hero.ClassLevel }"></span>
+                    <span class='mission-hero-level-text'>lvl {{hero.ClassLevel}}</span>
+                </div>
+                <div class='mission-hero-stats-row drop-shadow-2'>
+                    <span class='mission-hero-stat-kills'>⚔<span class='mission-hero-stat-num'>{{hero.Kills}}</span></span>
+                    <span v-show='(hero.Retinue + hero.Retinue2) > 0 || (hero.DeadRetinue + hero.DeadRetinue2) > 0' class='mission-hero-stat-retinue'>🛡<span class='mission-hero-stat-num'>{{hero.Retinue + hero.Retinue2}}</span><span v-show='(hero.DeadRetinue + hero.DeadRetinue2) > 0' class='mission-hero-stat-retinue-dead'>-{{hero.DeadRetinue + hero.DeadRetinue2}}</span></span>
+                    <span v-show='hero.CompanionCount > 0' class='mission-hero-stat-companions'>👥<span class='mission-hero-stat-num'>{{hero.CompanionCount}}</span></span>
+                    <span v-show='hero.GoldEarned > 0' class='mission-hero-stat-gold'>🪙<span class='mission-hero-stat-num'>{{formatNumber(hero.GoldEarned)}}</span></span>
+                    <span v-show='hero.XPEarned > 0' class='mission-hero-stat-xp'>⭐<span class='mission-hero-stat-num'>{{formatNumber(hero.XPEarned)}}</span></span>
+                    <span v-show='hero.DamageDealt > 0' class='mission-hero-stat-damage'>🔥<span class='mission-hero-stat-num'>{{formatNumber(hero.DamageDealt)}}</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id='mission-key' v-if='sortedHeroes.length > 0'>
+        <div class='mission-hero-score-row drop-shadow'>
+            <div class='mission-hero-level-text'>● {{keyLabels.Level}}</div>
+            <div class='mission-hero-stat-kills'>⚔ {{keyLabels.Kills}}</div>
+            <div class='mission-hero-stat-retinue'>🛡 {{keyLabels.Retinue}}</div>
+            <div class='mission-hero-stat-companions'>👥 {{keyLabels.Companions}}</div>
+            <div class='mission-hero-stat-gold'>🪙 {{keyLabels.Gold}}</div>
+            <div class='mission-hero-stat-xp'>⭐ {{keyLabels.XP}}</div>
+            <div class='mission-hero-stat-damage'>🔥 {{keyLabels.Damage}}</div>
+        </div>
+    </div>
+</div>
