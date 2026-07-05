@@ -1,0 +1,134 @@
+<Prefab>
+  <Window>
+    <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent">
+      <Children>
+        <!-- Bind to the Heroes list -->
+        <Widget DataSource="{Heroes}" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent">
+          <ItemTemplate>
+            <!-- Each hero entry -->
+            <Widget DataSource="{.}"
+                    IsVisible="@IsVisible"
+                    WidthSizePolicy="Fixed"
+                    HeightSizePolicy="Fixed"
+                    SuggestedWidth="@Width"
+                    SuggestedHeight="@Height"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    ScaledPositionXOffset="@PositionX"
+                    ScaledPositionYOffset="@PositionY">
+              <Children>
+                <ListPanel WidthSizePolicy="StretchToParent"
+                           HeightSizePolicy="StretchToParent"
+                           LayoutImp.LayoutMethod="Vertical"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Top">
+                  <Children>
+
+                    <!-- Row 0: resurrection cooldown bar -->
+                    <Widget IsVisible="@ResurrectVisible"
+                            WidthSizePolicy="StretchToParent"
+                            HeightSizePolicy="Fixed"
+                            SuggestedHeight="@ResurrectBarHeight"
+                            HorizontalAlignment="Center">
+                      <Children>
+                        <Widget Sprite="BlankWhiteSquare_9" Color="#33333388"
+                                WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent"/>
+                        <Widget Sprite="BlankWhiteSquare_9" Color="#4CE04CFF"
+                                WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent"
+                                SuggestedWidth="@ResurrectBarFillWidth" HorizontalAlignment="Left"/>
+                        <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent"
+                                    Brush="FiraSansExtraCondensed-Regular"
+                                    Brush.TextHorizontalAlignment="Center"
+                                    Brush.FontSize="10"
+                                    Text="@ResurrectText"
+                                    Brush.FontColor="#FFFFFFFF"/>
+                      </Children>
+                    </Widget>
+
+                    <!-- Row 1: adrenaline bar | name/level/stats | power bar -->
+                    <ListPanel WidthSizePolicy="StretchToParent"
+                               HeightSizePolicy="StretchToParent"
+                               LayoutImp.LayoutMethod="HorizontalLeftToRight"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Top">
+                      <Children>
+
+                        <!-- Adrenaline bar (left) -->
+                        <Widget IsVisible="@AdrenalineVisible"
+                                WidthSizePolicy="Fixed" HeightSizePolicy="Fixed"
+                                SuggestedWidth="@BarWidth" SuggestedHeight="@BarMaxHeight"
+                                VerticalAlignment="Bottom">
+                          <Children>
+                            <Widget Sprite="BlankWhiteSquare_9" Color="#33333388"
+                                    WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent"/>
+                            <Widget Sprite="BlankWhiteSquare_9" Color="#FF2222FF"
+                                    WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed"
+                                    SuggestedHeight="@AdrenalineBarFillHeight" VerticalAlignment="Bottom"/>
+                          </Children>
+                        </Widget>
+
+                        <!-- Center column: name+level row, stats row -->
+                        <ListPanel WidthSizePolicy="StretchToParent"
+                                   HeightSizePolicy="StretchToParent"
+                                   LayoutImp.LayoutMethod="Vertical"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Top">
+                          <Children>
+                            <ListPanel WidthSizePolicy="StretchToParent"
+                                       HeightSizePolicy="Fixed"
+                                       SuggestedHeight="20"
+                                       LayoutImp.LayoutMethod="HorizontalLeftToRight"
+                                       HorizontalAlignment="Center">
+                              <Children>
+                                <TextWidget WidthSizePolicy="CoverChildren" HeightSizePolicy="StretchToParent"
+                                            Brush="FiraSansExtraCondensed-Regular"
+                                            Brush.FontSize="@FontSize"
+                                            Text="@HeroName"
+                                            Brush.FontColor="@Color"/>
+                                <TextWidget WidthSizePolicy="CoverChildren" HeightSizePolicy="StretchToParent"
+                                            Brush="FiraSansExtraCondensed-Regular"
+                                            Brush.FontSize="12"
+                                            Text="@LevelDotsText"
+                                            Brush.FontColor="#FFD700FF"/>
+                                <TextWidget WidthSizePolicy="CoverChildren" HeightSizePolicy="StretchToParent"
+                                            Brush="FiraSansExtraCondensed-Regular"
+                                            Brush.FontSize="12"
+                                            Text="@LevelText"
+                                            Brush.FontColor="#CCCCCCFF"/>
+                              </Children>
+                            </ListPanel>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent"
+                                        Brush="FiraSansExtraCondensed-Regular"
+                                        Brush.TextHorizontalAlignment="Center"
+                                        Brush.FontSize="12"
+                                        Text="@StatsLine"
+                                        Brush.FontColor="#EEEEEEFF"/>
+                          </Children>
+                        </ListPanel>
+
+                        <!-- Power bar (right) -->
+                        <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed"
+                                SuggestedWidth="@BarWidth" SuggestedHeight="@BarMaxHeight"
+                                VerticalAlignment="Bottom">
+                          <Children>
+                            <Widget Sprite="BlankWhiteSquare_9" Color="#33333388"
+                                    WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent"/>
+                            <Widget Sprite="BlankWhiteSquare_9" Color="#2299FFFF"
+                                    WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed"
+                                    SuggestedHeight="@PowerBarFillHeight" VerticalAlignment="Bottom"/>
+                          </Children>
+                        </Widget>
+
+                      </Children>
+                    </ListPanel>
+
+                  </Children>
+                </ListPanel>
+              </Children>
+            </Widget>
+          </ItemTemplate>
+        </Widget>
+      </Children>
+    </Widget>
+  </Window>
+</Prefab>
