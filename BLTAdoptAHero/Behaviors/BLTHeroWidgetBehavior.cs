@@ -55,6 +55,8 @@ namespace BLTAdoptAHero
         private readonly float configHeight = GlobalCommonConfig.Get().NametagHeight;
         private readonly float configFontsize = GlobalCommonConfig.Get().NametagFontsize;
         private readonly InputKey configToggleKey = Enum.TryParse(GlobalCommonConfig.Get().NametagKey, out InputKey key) ? key : InputKey.H;
+        private readonly bool configUseNewLayout = GlobalCommonConfig.Get().UseNewHeroBarLayout;
+        private const int MaxLevelDots = 6;
         private bool _hideUI = false;
 
         //private readonly Dictionary<Hero, string> _tournamentTeamColorCache = new();
@@ -136,6 +138,9 @@ namespace BLTAdoptAHero
                 vm.GoldText = Abbrev(wonGold);
                 vm.XpText = Abbrev(wonXP);
                 vm.ClassLevel = hero?.Level ?? 0; // placeholder: no numeric BLT class level available, using native hero level
+                int filledDots = Math.Min(vm.ClassLevel, MaxLevelDots);
+                vm.LevelDotsText = new string('●', filledDots) + new string('○', MaxLevelDots - filledDots);
+                vm.LevelText = $"lvl{vm.ClassLevel}";
 
                 vm.Companions = BLTExternalStats.Companions(hero);
                 vm.DamageText = Abbrev(BLTExternalStats.Damage(hero));
@@ -177,11 +182,21 @@ namespace BLTAdoptAHero
                                 scale = MBMath.ClampFloat(scale, 0.5f, 1f);
 
                                 vm.IsVisible = true;
-                                vm.Width = configWidth * scale;
-                                vm.Height = configHeight * scale;
+                                float baseWidth = configUseNewLayout ? 190f : configWidth;
+                                float baseHeight = configUseNewLayout ? 90f : configHeight;
+                                vm.Width = baseWidth * scale;
+                                vm.Height = baseHeight * scale;
                                 vm.FontSize = Math.Max(15, (int)(configFontsize * scale));
                                 vm.PositionX = x - vm.Width * 0.5f;
                                 vm.PositionY = y - vm.Height * 0.5f - 5f;
+
+                                vm.BarWidth = 8f * scale;
+                                vm.BarMaxHeight = 50f * scale;
+                                vm.ResurrectBarHeight = 6f * scale;
+                                vm.ResurrectBarMaxWidth = (baseWidth - 20f) * scale;
+                                vm.AdrenalineBarFillHeight = vm.BarMaxHeight * MBMath.ClampFloat(vm.AdrenalineFraction, 0f, 1f);
+                                vm.PowerBarFillHeight = vm.BarMaxHeight * MBMath.ClampFloat(vm.PowerFraction, 0f, 1f);
+                                vm.ResurrectBarFillWidth = vm.ResurrectBarMaxWidth * MBMath.ClampFloat(vm.ResurrectFraction, 0f, 1f);
 
 
                                 heroVMs.Add((hero, vm, dist));
