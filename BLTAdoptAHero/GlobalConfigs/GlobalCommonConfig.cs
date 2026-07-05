@@ -277,6 +277,13 @@ namespace BLTAdoptAHero
                  PropertyOrder(12),
                  Document, UsedImplicitly]
         public string NametagKey { get; set; } = "H";
+
+        [LocDisplayName("{=TESTING}Use new hero bar layout"),
+         LocCategory("Battle", "{=9qAD6eZR}Battle"),
+         LocDescription("{=TESTING}When enabled, shows the redesigned hero bar (side adrenaline/power bars, resurrection timer, class level dots, extended stats row) instead of the simple name-only nameplate. Takes effect on the next mission load."),
+         PropertyOrder(13),
+         Document, UsedImplicitly]
+        public bool UseNewHeroBarLayout { get; set; } = false;
         #endregion
 
         #region Death
