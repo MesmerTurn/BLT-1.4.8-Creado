@@ -33,6 +33,7 @@ namespace BLTAdoptAHero
         public static System.Func<Hero, int> ResurrectSeconds;       // seconds remaining (optional)
         public static System.Func<bool> GetUseNewHeroBarLayout;      // global (not per-hero) toggle, config lives in MakeBltGreatAgain now
         public static System.Func<bool> GetShowSideBars;             // global (not per-hero) toggle for the adrenaline/power side bars
+        public static System.Func<bool> GetShowMissionOverlay;       // global (not per-hero) toggle for the browser-based MissionInfo overlay
 
         public static int Companions(Hero h)      => CompanionCount   != null && h != null ? SafeI(() => CompanionCount(h)) : 0;
         public static float Adrenaline(Hero h)     => AdrenalineFraction != null && h != null ? SafeF(() => AdrenalineFraction(h)) : 0f;
@@ -42,6 +43,7 @@ namespace BLTAdoptAHero
         public static int ResurrectSecs(Hero h)    => ResurrectSeconds != null && h != null ? SafeI(() => ResurrectSeconds(h)) : 0;
         public static bool UseNewHeroBarLayout()   => GetUseNewHeroBarLayout != null && SafeB(() => GetUseNewHeroBarLayout(), false);
         public static bool ShowSideBars()          => GetShowSideBars != null ? SafeB(() => GetShowSideBars(), true) : true;
+        public static bool ShowMissionOverlay()    => GetShowMissionOverlay != null ? SafeB(() => GetShowMissionOverlay(), true) : true;
         private static int SafeI(System.Func<int> f){ try { return f(); } catch { return 0; } }
         private static float SafeF(System.Func<float> f){ try { return f(); } catch { return 0f; } }
         private static bool SafeB(System.Func<bool> f, bool fallback){ try { return f(); } catch { return fallback; } }

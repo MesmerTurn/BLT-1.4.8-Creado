@@ -138,12 +138,19 @@ namespace BLTAdoptAHero
                 {
                     lastTickT = CampaignHelpers.GetApplicationTime();
 
-                    // Take a copy of the array so we can remove items from activeHeroes in UpdateHeroVM
-                    foreach (var h in activeHeroes.ToList())
+                    if (BLTExternalStats.ShowMissionOverlay())
                     {
-                        UpdateHeroVM(h);
+                        // Take a copy of the array so we can remove items from activeHeroes in UpdateHeroVM
+                        foreach (var h in activeHeroes.ToList())
+                        {
+                            UpdateHeroVM(h);
+                        }
+                        MissionInfoHub.Update();
                     }
-                    MissionInfoHub.Update();
+                    else
+                    {
+                        MissionInfoHub.Clear();
+                    }
                 }
             });
         }
@@ -384,6 +391,10 @@ namespace BLTAdoptAHero
                     XPEarned = heroState.WonXP,
                     Kills = heroState.Kills,
                     RetinueKills = heroState.RetinueKills,
+                    DamageDealt = BLTExternalStats.Damage(hero),
+                    CompanionCount = BLTExternalStats.Companions(hero),
+                    AdrenalineFractionRemaining = BLTExternalStats.Adrenaline(hero),
+                    ClassLevel = GlobalHeroClassConfig.Get()?.GetHeroClassLevel(hero) ?? 0,
                 });
             }
         }
