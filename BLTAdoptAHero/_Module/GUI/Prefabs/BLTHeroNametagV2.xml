@@ -107,7 +107,8 @@
                         </ListPanel>
 
                         <!-- Power bar (right) -->
-                        <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed"
+                        <Widget IsVisible="@PowerBarVisible"
+                                WidthSizePolicy="Fixed" HeightSizePolicy="Fixed"
                                 SuggestedWidth="@BarWidth" SuggestedHeight="@BarMaxHeight"
                                 VerticalAlignment="Bottom">
                           <Children>

@@ -31,6 +31,8 @@ namespace BLTAdoptAHero
         public static System.Func<Hero, float> PowerFraction;        // 0..1 (optional, may stay null)
         public static System.Func<Hero, float> ResurrectFraction;    // 0..1 cooldown progress (optional)
         public static System.Func<Hero, int> ResurrectSeconds;       // seconds remaining (optional)
+        public static System.Func<bool> GetUseNewHeroBarLayout;      // global (not per-hero) toggle, config lives in MakeBltGreatAgain now
+        public static System.Func<bool> GetShowSideBars;             // global (not per-hero) toggle for the adrenaline/power side bars
 
         public static int Companions(Hero h)      => CompanionCount   != null && h != null ? SafeI(() => CompanionCount(h)) : 0;
         public static float Adrenaline(Hero h)     => AdrenalineFraction != null && h != null ? SafeF(() => AdrenalineFraction(h)) : 0f;
@@ -38,8 +40,11 @@ namespace BLTAdoptAHero
         public static float Power(Hero h)          => PowerFraction    != null && h != null ? SafeF(() => PowerFraction(h)) : 0f;
         public static float Resurrect(Hero h)      => ResurrectFraction!= null && h != null ? SafeF(() => ResurrectFraction(h)) : 0f;
         public static int ResurrectSecs(Hero h)    => ResurrectSeconds != null && h != null ? SafeI(() => ResurrectSeconds(h)) : 0;
+        public static bool UseNewHeroBarLayout()   => GetUseNewHeroBarLayout != null && SafeB(() => GetUseNewHeroBarLayout(), false);
+        public static bool ShowSideBars()          => GetShowSideBars != null ? SafeB(() => GetShowSideBars(), true) : true;
         private static int SafeI(System.Func<int> f){ try { return f(); } catch { return 0; } }
         private static float SafeF(System.Func<float> f){ try { return f(); } catch { return 0f; } }
+        private static bool SafeB(System.Func<bool> f, bool fallback){ try { return f(); } catch { return fallback; } }
     }
 
     [DefaultView]
@@ -55,7 +60,8 @@ namespace BLTAdoptAHero
         private readonly float configHeight = GlobalCommonConfig.Get().NametagHeight;
         private readonly float configFontsize = GlobalCommonConfig.Get().NametagFontsize;
         private readonly InputKey configToggleKey = Enum.TryParse(GlobalCommonConfig.Get().NametagKey, out InputKey key) ? key : InputKey.H;
-        private readonly bool configUseNewLayout = GlobalCommonConfig.Get().UseNewHeroBarLayout;
+        private readonly bool configUseNewLayout = BLTExternalStats.UseNewHeroBarLayout();
+        private readonly bool configShowSideBars = BLTExternalStats.ShowSideBars();
         private const int MaxLevelDots = 6;
         private bool _hideUI = false;
 
@@ -147,7 +153,8 @@ namespace BLTAdoptAHero
                 vm.Companions = BLTExternalStats.Companions(hero);
                 vm.DamageText = Abbrev(BLTExternalStats.Damage(hero));
                 vm.AdrenalineFraction = BLTExternalStats.Adrenaline(hero);
-                vm.AdrenalineVisible = vm.AdrenalineFraction > 0f;
+                vm.AdrenalineVisible = configShowSideBars && vm.AdrenalineFraction > 0f;
+                vm.PowerBarVisible = configShowSideBars;
                 vm.PowerFraction = BLTExternalStats.Power(hero);
                 vm.ResurrectFraction = BLTExternalStats.Resurrect(hero);
                 int rs = BLTExternalStats.ResurrectSecs(hero);
@@ -529,6 +536,14 @@ namespace BLTAdoptAHero
         {
             get => _resurrectVisible;
             set { if (_resurrectVisible != value) { _resurrectVisible = value; OnPropertyChanged(nameof(ResurrectVisible)); } }
+        }
+
+        private bool _powerBarVisible;
+        [DataSourceProperty]
+        public bool PowerBarVisible
+        {
+            get => _powerBarVisible;
+            set { if (_powerBarVisible != value) { _powerBarVisible = value; OnPropertyChanged(nameof(PowerBarVisible)); } }
         }
 
         private string _statsLine;

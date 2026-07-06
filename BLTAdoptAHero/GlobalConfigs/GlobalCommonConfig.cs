@@ -277,13 +277,6 @@ namespace BLTAdoptAHero
                  PropertyOrder(12),
                  Document, UsedImplicitly]
         public string NametagKey { get; set; } = "H";
-
-        [LocDisplayName("{=TESTING}Use new hero bar layout"),
-         LocCategory("Battle", "{=9qAD6eZR}Battle"),
-         LocDescription("{=TESTING}When enabled, shows the redesigned hero bar (side adrenaline/power bars, resurrection timer, class level dots, extended stats row) instead of the simple name-only nameplate. Takes effect on the next mission load."),
-         PropertyOrder(13),
-         Document, UsedImplicitly]
-        public bool UseNewHeroBarLayout { get; set; } = false;
         #endregion
 
         #region Death
@@ -539,6 +532,32 @@ namespace BLTAdoptAHero
          LocDescription("{=BLT_BlockNegativesAtFloorDesc}When enabled, upgrade effects with negative values will not be applied if the stat they affect is already at zero (or would be pushed below zero). Disable this to allow negative upgrades to always apply regardless of the current stat value."),
          PropertyOrder(4), UsedImplicitly]
         public bool BlockNegativesAtFloor { get; set; } = true;
+
+        [LocDisplayName("Enable Tier 7 (Elite)"),
+         LocCategory("Upgrades", "{=BLT_Upgrades}Upgrades"),
+         LocDescription("Allow heroes to upgrade to Tier 7 (Elite). When disabled, Tier 6 is the maximum and the elite power bonus is not applied."),
+         PropertyOrder(5), UsedImplicitly]
+        public bool EnableTier7 { get; set; } = true;
+
+        [LocDisplayName("Enable Tier 8 (Legendary)"),
+         LocCategory("Upgrades", "{=BLT_Upgrades}Upgrades"),
+         LocDescription("Allow heroes to upgrade to Tier 8 (Legendary). Requires Tier 7 to be enabled. When disabled, Tier 7 is the maximum and the legendary HP bonus is not applied."),
+         PropertyOrder(6), UsedImplicitly]
+        public bool EnableTier8 { get; set; } = true;
+
+        [LocDisplayName("Tier 7 Power Multiplier"),
+         LocCategory("Upgrades", "{=BLT_Upgrades}Upgrades"),
+         LocDescription("Combat power multiplier applied to Tier 7+ heroes: scales both outgoing melee/ranged damage and armor effectiveness. 1.0 = no multiplier (elite item modifier only), 1.5 = +50%. Set this to sit alongside your smithing multipliers."),
+         PropertyOrder(7), UsedImplicitly,
+         Range(1.0, 5.0), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor))]
+        public float Tier7PowerMultiplier { get; set; } = 1.5f;
+
+        [LocDisplayName("Tier 8 Health Multiplier"),
+         LocCategory("Upgrades", "{=BLT_Upgrades}Upgrades"),
+         LocDescription("Maximum health multiplier applied to Tier 8 (Legendary) heroes in battle. 2.0 = double HP."),
+         PropertyOrder(8), UsedImplicitly,
+         Range(1.0, 10.0), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor))]
+        public float Tier8HealthMultiplier { get; set; } = 2.0f;
         #endregion
 
         #region XP
