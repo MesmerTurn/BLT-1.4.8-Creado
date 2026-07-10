@@ -165,8 +165,31 @@ namespace BLTAdoptAHero
 
         // ── Helpers: landed status ────────────────────────────────────────────
 
-        /// <summary>True if the clan owns at least one fief.</summary>
-        public static bool IsLanded(Clan c) => c?.Fiefs != null && c.Fiefs.Count > 0;
+        /// <summary>True if the clan owns at least one fief, directly or through a vassal.</summary>
+        public static bool IsLanded(Clan c)
+        {
+            if (c == null) return false;
+            if (c.Fiefs != null && c.Fiefs.Count > 0) return true;
+
+            var vassals = VassalBehavior.Current?.GetVassalClans(c);
+            if (vassals != null)
+                foreach (var v in vassals)
+                    if (v?.Fiefs != null && v.Fiefs.Count > 0) return true;
+
+            return false;
+        }
+
+        /// <summary>Total fief count across the clan and all its vassals — used for landed→landless detection.</summary>
+        public static int GetEffectiveFiefCount(Clan c)
+        {
+            if (c == null) return 0;
+            int count = c.Fiefs?.Count ?? 0;
+            var vassals = VassalBehavior.Current?.GetVassalClans(c);
+            if (vassals != null)
+                foreach (var v in vassals)
+                    count += v?.Fiefs?.Count ?? 0;
+            return count;
+        }
 
         /// <summary>
         /// True if a clan is eligible for kingdom-level clan diplomacy
@@ -209,35 +232,31 @@ namespace BLTAdoptAHero
         /// </summary>
         public string CreateProposal(Clan proposer, Clan target, int goldCost, int daysToAccept)
         {
-            if (proposer == null || target == null)
-                return "Invalid clan";
-            if (proposer == target)
-                return "Cannot ally with yourself";
-
-            // Proposer must be independent
-            if (proposer.Kingdom != null)
-                return $"{proposer.Name} is in a kingdom — use the kingdom diplomacy system";
-
-            // Target may be independent or landed
-            if (target.Kingdom != null)
-                return $"{target.Name} is in a kingdom — use the kingdom diplomacy system";
-
-            // At least one side must be BLT-adopted
+            if (proposer == null || target == null) return "Invalid clan";
+            if (proposer == target) return "Cannot ally with yourself";
+            if (proposer.Kingdom != null) return $"{proposer.Name} is in a kingdom — use the kingdom diplomacy system";
+            if (target.Kingdom != null) return $"{target.Name} is in a kingdom — use the kingdom diplomacy system";
             if (target.Leader == null || !target.Leader.IsAdopted())
                 return "Target clan must be BLT-led to form a clan alliance";
+            if (HasAlliance(proposer, target)) return $"Already allied with {target.Name}";
+            if (GetProposal(proposer, target) != null) return $"Alliance proposal already pending with {target.Name}";
 
-            if (HasAlliance(proposer, target))
-                return $"Already allied with {target.Name}";
-            if (GetProposal(proposer, target) != null)
-                return $"Alliance proposal already pending with {target.Name}";
-
-            // If neither side is landed, apply the independent-clan max
-            if (!IsLanded(proposer) && !IsLanded(target))
+            if (!IsLanded(proposer))
             {
                 int current = GetAlliancesFor(proposer).Count;
                 if (MaxClanAlliances > 0 && current >= MaxClanAlliances)
-                    return $"Maximum clan alliances reached ({current}/{MaxClanAlliances})";
+                    return $"Maximum clan alliances reached for {proposer.Name} ({current}/{MaxClanAlliances})";
             }
+            if (!IsLanded(target))
+            {
+                int currentTarget = GetAlliancesFor(target).Count;
+                if (MaxClanAlliances > 0 && currentTarget >= MaxClanAlliances)
+                    return $"{target.Name} already has the maximum clan alliances ({currentTarget}/{MaxClanAlliances})";
+            }
+
+            // War check
+            if (proposer.IsAtWarWith(target))
+                return $"At war with {target.Name} — make peace first";
 
             var key = MakeKey(proposer, target);
             _proposals[key] = new BLTClanAllianceProposal
@@ -247,7 +266,7 @@ namespace BLTAdoptAHero
                 ExpiresAtDays = CampaignTime.Now.ToDays + daysToAccept,
                 GoldCost = goldCost
             };
-            return null; // success
+            return null;
         }
 
         // Runtime-only — not persisted (proposals are short-lived)
@@ -288,8 +307,7 @@ namespace BLTAdoptAHero
             if (accepter == null || proposer == null) return "Invalid clan";
 
             var proposal = GetProposal(proposer, accepter);
-            if (proposal == null)
-                return $"No pending alliance proposal from {proposer.Name}";
+            if (proposal == null) return $"No pending alliance proposal from {proposer.Name}";
             if (proposal.IsExpired())
             {
                 RemoveProposal(proposer, accepter);
@@ -300,6 +318,11 @@ namespace BLTAdoptAHero
                 RemoveProposal(proposer, accepter);
                 return "One or both clans have joined a kingdom — proposal cancelled";
             }
+            if (proposer.IsAtWarWith(accepter))
+            {
+                RemoveProposal(proposer, accepter);
+                return $"You are now at war with {proposer.Name} — proposal cancelled";
+            }
 
             var key = MakeKey(proposer, accepter);
             _alliances[key] = new BLTClanAlliance
@@ -309,7 +332,7 @@ namespace BLTAdoptAHero
                 StartDays = CampaignTime.Now.ToDays
             };
             RemoveProposal(proposer, accepter);
-            return null; // success
+            return null;
         }
 
         /// <summary>
@@ -423,6 +446,17 @@ namespace BLTAdoptAHero
             if (target == null)
             { _clanCTWProposals.Remove(key); return "Target faction no longer exists"; }
 
+            // Fixed: Don't let a clan get called to war against its own ally
+            if (target is Clan targetClan && HasAlliance(accepter, targetClan))
+            { _clanCTWProposals.Remove(key); return $"Cannot join — you are allied with {target.Name}"; }
+
+            // Edit: Caller may have already made peace with target since proposing
+            if (!caller.IsAtWarWith(target))
+            { _clanCTWProposals.Remove(key); return $"{caller.Name} is no longer at war with {target.Name}"; }
+
+            if (accepter.IsAtWarWith(target))
+            { _clanCTWProposals.Remove(key); return $"Already at war with {target.Name}"; }
+
             _clanCTWProposals.Remove(key);
             return null;
         }
@@ -437,41 +471,31 @@ namespace BLTAdoptAHero
         {
             if (clan == null) return;
 
-            // Only strip alliances where the OTHER side is a kingdom or a landed clan
-            // (i.e. agreements that required land to enter). Pure clan-to-clan alliances
-            // between two independent clans are left intact.
             foreach (var a in GetAlliancesFor(clan).ToList())
             {
                 var other = a.GetOther(clan);
                 if (other == null) continue;
-
                 bool otherIsKingdom = other.Kingdom != null;
                 bool otherIsLanded = IsLanded(other);
-
                 if (otherIsKingdom || otherIsLanded)
-                {
-                    BreakAlliance(clan, other,
-                        $"{clan.Name} lost all fiefs — kingdom-level diplomatic agreement dissolved");
-                }
+                    BreakAlliance(clan, other, $"{clan.Name} lost all fiefs — kingdom-level diplomatic agreement dissolved");
             }
 
-            // Cancel only proposals that involve a kingdom or landed clan on the other side
             foreach (var kvp in _proposals
-                .Where(p => p.Value.ProposerClanId == clan.StringId
-                         || p.Value.TargetClanId == clan.StringId)
+                .Where(p => p.Value.ProposerClanId == clan.StringId || p.Value.TargetClanId == clan.StringId)
                 .ToList())
             {
                 var proposal = kvp.Value;
-                var other = proposal.ProposerClanId == clan.StringId
-                    ? proposal.GetTarget()
-                    : proposal.GetProposer();
-
+                var other = proposal.ProposerClanId == clan.StringId ? proposal.GetTarget() : proposal.GetProposer();
                 if (other == null || other.Kingdom != null || IsLanded(other))
                     _proposals.Remove(kvp.Key);
             }
 
+            // NEW — terminate the kingdom-level treaty system for this clan too.
+            BLTTreatyManager.Current?.TerminateAgreementsFor(clan);
+
             NotifyClanLeader(clan,
-                "You have lost all your fiefs. Kingdom-level diplomatic agreements have been dissolved.");
+                "You have lost all your fiefs. All kingdom-level diplomatic agreements have been dissolved.");
         }
 
         // ── Event Handlers ────────────────────────────────────────────────────
@@ -533,22 +557,18 @@ namespace BLTAdoptAHero
                 .Select(kvp => kvp.Key).ToList())
                 _clanCTWProposals.Remove(key);
 
-            // Fief-loss check for landed clans that have alliances
-            foreach (var a in _alliances.Values.ToList())
-            {
-                CheckFiefLoss(a.GetClan1());
-                CheckFiefLoss(a.GetClan2());
-            }
+            // Fief-loss check — all independent clans
+            foreach (var c in Clan.All.Where(c => c != null && !c.IsEliminated && c.Kingdom == null).ToList())
+                CheckFiefLoss(c);
         }
 
         private void CheckFiefLoss(Clan c)
         {
             if (c == null || c.Kingdom != null) return;
             int prev = _lastKnownFiefCount.TryGetValue(c.StringId, out int v) ? v : -1;
-            int curr = c.Fiefs?.Count ?? 0;
+            int curr = IsLanded(c) ? Math.Max(1, GetEffectiveFiefCount(c)) : 0; // normalize to a landed/landless signal
             _lastKnownFiefCount[c.StringId] = curr;
 
-            // Transitioned from landed → landless
             if (prev > 0 && curr == 0)
                 OnClanLostLastFief(c);
         }

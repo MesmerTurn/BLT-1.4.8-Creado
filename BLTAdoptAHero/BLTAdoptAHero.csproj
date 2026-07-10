@@ -25,6 +25,10 @@
       <HintPath>$(BANNERLORD_GAME_DIR)\bin\Win64_Shipping_Client\TaleWorlds.AchievementSystem.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="$(BANNERLORD_GAME_DIR)\Modules\NavalDLC\bin\Win64_Shipping_Client\NavalDLC.dll">
+      <HintPath>$(BANNERLORD_GAME_DIR)\Modules\NavalDLC\bin\Win64_Shipping_Client\NavalDLC.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="$(BANNERLORD_GAME_DIR)\bin\Win64_Shipping_Client\TaleWorlds.ActivitySystem.dll">
       <HintPath>$(BANNERLORD_GAME_DIR)\bin\Win64_Shipping_Client\TaleWorlds.ActivitySystem.dll</HintPath>
       <Private>False</Private>

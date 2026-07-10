@@ -112,6 +112,71 @@ namespace BLTAdoptAHero
         {
             CampaignEvents.DailyTickEvent.AddNonSerializedListener(this, OnDailyTick);
             CampaignEvents.KingdomDestroyedEvent.AddNonSerializedListener(this, OnKingdomDestroyed);
+            CampaignEvents.OnClanDestroyedEvent.AddNonSerializedListener(this, (clan) => TerminateAgreementsFor(clan));
+        }
+
+        /// <summary>
+        /// Strips all kingdom-level treaties/proposals involving a landed independent
+        /// clan. Called both on clan destruction and when a clan drops to zero
+        /// effective fiefs (see BLTClanDiplomacyBehavior.OnClanLostLastFief).
+        /// Wars are intentionally left intact — losing your land doesn't erase a war,
+        /// same rule already applied to clan-alliances.
+        /// </summary>
+        public void TerminateAgreementsFor(Clan clan)
+        {
+            if (clan == null) return;
+
+            foreach (var key in _truces.Where(kv => kv.Value.Involves(clan)).Select(kv => kv.Key).ToList())
+                _truces.Remove(key);
+
+            foreach (var key in _naps.Where(kv => kv.Value.Involves(clan)).Select(kv => kv.Key).ToList())
+                _naps.Remove(key);
+
+            foreach (var kvp in _alliances.Where(kv => kv.Value.Involves(clan)).ToList())
+            {
+                var other = kvp.Value.GetOtherFaction(clan);
+                _alliances.Remove(kvp.Key);
+                if (other?.Leader != null && other.Leader.IsAdopted())
+                    NotifyLeader(other, $"Your alliance with {clan.Name} has been dissolved — they no longer hold land.");
+            }
+
+            foreach (var key in _tributes.Where(kv => kv.Value.Involves(clan)).Select(kv => kv.Key).ToList())
+                _tributes.Remove(key);
+
+            foreach (var key in _peaceProposals.Where(kv =>
+                     kv.Value.ProposerKingdomId == clan.StringId || kv.Value.TargetKingdomId == clan.StringId)
+                     .Select(kv => kv.Key).ToList())
+                _peaceProposals.Remove(key);
+
+            foreach (var key in _allianceProposals.Where(kv =>
+                     kv.Value.ProposerKingdomId == clan.StringId || kv.Value.TargetKingdomId == clan.StringId)
+                     .Select(kv => kv.Key).ToList())
+                _allianceProposals.Remove(key);
+
+            foreach (var key in _tradeProposals.Where(kv =>
+                     kv.Value.ProposerKingdomId == clan.StringId || kv.Value.TargetKingdomId == clan.StringId)
+                     .Select(kv => kv.Key).ToList())
+                _tradeProposals.Remove(key);
+
+            foreach (var key in _napProposals.Where(kv =>
+                     kv.Value.ProposerKingdomId == clan.StringId || kv.Value.TargetKingdomId == clan.StringId)
+                     .Select(kv => kv.Key).ToList())
+                _napProposals.Remove(key);
+
+            var ctwKeys = _ctwProposals.Where(kv =>
+                kv.Value.ProposerKingdomId == clan.StringId ||
+                kv.Value.CalledKingdomId == clan.StringId ||
+                kv.Value.TargetKingdomId == clan.StringId).Select(kv => kv.Key).ToList();
+            foreach (var key in ctwKeys) _ctwProposals.Remove(key);
+        }
+
+        private static void NotifyLeader(IFaction f, string message)
+        {
+            Hero leader = f?.Leader;
+            if (leader == null || !leader.IsAdopted()) return;
+            string name = leader.FirstName.ToString()
+                .Replace(BLTAdoptAHeroModule.Tag, "").Replace(BLTAdoptAHeroModule.DevTag, "").Trim();
+            Log.LogFeedResponse($"@{name} {message}");
         }
 
         public override void SyncData(IDataStore dataStore)
@@ -494,14 +559,14 @@ namespace BLTAdoptAHero
             return csv.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
         }
 
-        private string MakeKey(Kingdom k1, Kingdom k2)
+        private string MakeKey(IFaction k1, IFaction k2)
         {
             if (k1 == null || k2 == null) return null;
             var ids = new[] { k1.StringId, k2.StringId }.OrderBy(x => x).ToArray();
             return $"{ids[0]}_{ids[1]}";
         }
 
-        private string MakeCTWCooldownKey(Kingdom proposer, Kingdom called)
+        private string MakeCTWCooldownKey(IFaction proposer, IFaction called)
         {
             if (proposer == null || called == null) return null;
             return $"{proposer.StringId}_{called.StringId}";
@@ -590,7 +655,7 @@ namespace BLTAdoptAHero
                     }
                     else
                     {
-                        // AI → BLT: Give FULL tribute to BLT receiver (free money!)
+                        // AI → BLT: Give FULL tribute to BLT receiver
                         BLTAdoptAHeroCampaignBehavior.Current?.ChangeHeroGold(receiver.Leader, amount, false);
 
 #if DEBUG
@@ -703,7 +768,7 @@ namespace BLTAdoptAHero
             }
         }
 
-        private void OnKingdomDestroyed(Kingdom kingdom)
+        private void OnKingdomDestroyed(IFaction kingdom)
         {
             if (kingdom == null) return;
 
@@ -757,7 +822,7 @@ namespace BLTAdoptAHero
 
         #region Public API
 
-        public bool CanDeclareWar(Kingdom declarer, Kingdom target, out string reason)
+        public bool CanDeclareWar(IFaction declarer, IFaction target, out string reason)
         {
             reason = null;
 
@@ -806,7 +871,7 @@ namespace BLTAdoptAHero
             return true;
         }
 
-        public bool CanCallToWar(Kingdom proposer, Kingdom ally, int cooldownDays, out string reason)
+        public bool CanCallToWar(IFaction proposer, IFaction ally, int cooldownDays, out string reason)
         {
             reason = null;
 
@@ -828,14 +893,14 @@ namespace BLTAdoptAHero
             return true;
         }
 
-        public void RecordCTWCall(Kingdom proposer, Kingdom ally)
+        public void RecordCTWCall(IFaction proposer, IFaction ally)
         {
             var key = MakeCTWCooldownKey(proposer, ally);
             _ctwCooldowns[key] = CampaignTime.Now;
         }
 
         // Treaties
-        public BLTTruce CreateTruce(Kingdom k1, Kingdom k2, int durationDays)
+        public BLTTruce CreateTruce(IFaction k1, IFaction k2, int durationDays)
         {
             var key = MakeKey(k1, k2);
             if (key == null) return null;
@@ -845,7 +910,7 @@ namespace BLTAdoptAHero
             return truce;
         }
 
-        public BLTNAP CreateNAP(Kingdom k1, Kingdom k2)
+        public BLTNAP CreateNAP(IFaction k1, IFaction k2)
         {
             var key = MakeKey(k1, k2);
             if (key == null) return null;
@@ -855,7 +920,7 @@ namespace BLTAdoptAHero
             return nap;
         }
 
-        public BLTAlliance CreateAlliance(Kingdom k1, Kingdom k2)
+        public BLTAlliance CreateAlliance(IFaction k1, IFaction k2)
         {
             var key = MakeKey(k1, k2);
             if (key == null) return null;
@@ -885,7 +950,7 @@ namespace BLTAdoptAHero
             return war;
         }
 
-        public bool CanMakePeace(Kingdom k1, Kingdom k2, out string reason)
+        public bool CanMakePeace(IFaction k1, IFaction k2, out string reason)
         {
             reason = null;
 
@@ -918,7 +983,7 @@ namespace BLTAdoptAHero
         }
 
         // Proposals (with duplicate prevention - updates existing)
-        public BLTPeaceProposal CreatePeaceProposal(Kingdom proposer, Kingdom target, bool isOffer, int dailyTribute, int duration, int goldCost, int influenceCost, int daysToAccept)
+        public BLTPeaceProposal CreatePeaceProposal(IFaction proposer, IFaction target, bool isOffer, int dailyTribute, int duration, int goldCost, int influenceCost, int daysToAccept)
         {
             var key = MakeKey(proposer, target);
             if (key == null) return null;
@@ -928,7 +993,7 @@ namespace BLTAdoptAHero
             return proposal;
         }
 
-        public BLTAllianceProposal CreateAllianceProposal(Kingdom proposer, Kingdom target, int goldCost, int influenceCost, int daysToAccept, int breakAllianceCost, int ctwCost)
+        public BLTAllianceProposal CreateAllianceProposal(IFaction proposer, IFaction target, int goldCost, int influenceCost, int daysToAccept, int breakAllianceCost, int ctwCost)
         {
             var key = MakeKey(proposer, target);
             if (key == null) return null;
@@ -938,7 +1003,7 @@ namespace BLTAdoptAHero
             return proposal;
         }
 
-        public BLTTradeProposal CreateTradeProposal(Kingdom proposer, Kingdom target, int goldCost, int influenceCost, int daysToAccept)
+        public BLTTradeProposal CreateTradeProposal(IFaction proposer, IFaction target, int goldCost, int influenceCost, int daysToAccept)
         {
             var key = MakeKey(proposer, target);
             if (key == null) return null;
@@ -948,7 +1013,7 @@ namespace BLTAdoptAHero
             return proposal;
         }
 
-        public BLTNAPProposal CreateNAPProposal(Kingdom proposer, Kingdom target, int goldCost, int influenceCost, int daysToAccept)
+        public BLTNAPProposal CreateNAPProposal(IFaction proposer, IFaction target, int goldCost, int influenceCost, int daysToAccept)
         {
             var key = MakeKey(proposer, target);
             if (key == null) return null;
@@ -958,7 +1023,7 @@ namespace BLTAdoptAHero
             return proposal;
         }
 
-        public BLTCTWProposal CreateCTWProposal(Kingdom proposer, Kingdom called, Kingdom target, int daysToAccept)
+        public BLTCTWProposal CreateCTWProposal(IFaction proposer, IFaction called, IFaction target, int daysToAccept)
         {
             var key = $"{proposer.StringId}_{called.StringId}_{target.StringId}";
             var proposal = new BLTCTWProposal(proposer, called, target, daysToAccept);
@@ -967,19 +1032,19 @@ namespace BLTAdoptAHero
         }
 
         // Remove methods
-        public void RemoveTruce(Kingdom k1, Kingdom k2)
+        public void RemoveTruce(IFaction k1, IFaction k2)
         {
             var key = MakeKey(k1, k2);
             if (key != null) _truces.Remove(key);
         }
 
-        public void RemoveNAP(Kingdom k1, Kingdom k2)
+        public void RemoveNAP(IFaction k1, IFaction k2)
         {
             var key = MakeKey(k1, k2);
             if (key != null) _naps.Remove(key);
         }
 
-        public void RemoveAlliance(Kingdom k1, Kingdom k2)
+        public void RemoveAlliance(IFaction k1, IFaction k2)
         {
             var key = MakeKey(k1, k2);
             if (key != null) _alliances.Remove(key);
@@ -991,56 +1056,56 @@ namespace BLTAdoptAHero
             if (key != null) _tributes.Remove(key);
         }
 
-        public void RemoveWar(Kingdom k1, Kingdom k2)
+        public void RemoveWar(IFaction k1, IFaction k2)
         {
             var key = MakeKey(k1, k2);
             if (key != null) _wars.Remove(key);
         }
 
-        public void RemovePeaceProposal(Kingdom proposer, Kingdom target)
+        public void RemovePeaceProposal(IFaction proposer, IFaction target)
         {
             var key = MakeKey(proposer, target);
             if (key != null) _peaceProposals.Remove(key);
         }
 
-        public void RemoveAllianceProposal(Kingdom proposer, Kingdom target)
+        public void RemoveAllianceProposal(IFaction proposer, IFaction target)
         {
             var key = MakeKey(proposer, target);
             if (key != null) _allianceProposals.Remove(key);
         }
 
-        public void RemoveTradeProposal(Kingdom proposer, Kingdom target)
+        public void RemoveTradeProposal(IFaction proposer, IFaction target)
         {
             var key = MakeKey(proposer, target);
             if (key != null) _tradeProposals.Remove(key);
         }
 
-        public void RemoveNAPProposal(Kingdom proposer, Kingdom target)
+        public void RemoveNAPProposal(IFaction proposer, IFaction target)
         {
             var key = MakeKey(proposer, target);
             if (key != null) _napProposals.Remove(key);
         }
 
-        public void RemoveCTWProposal(Kingdom proposer, Kingdom called, Kingdom target)
+        public void RemoveCTWProposal(IFaction proposer, IFaction called, IFaction target)
         {
             var key = $"{proposer?.StringId}_{called?.StringId}_{target?.StringId}";
             _ctwProposals.Remove(key);
         }
 
         // Get methods
-        public BLTTruce GetTruce(Kingdom k1, Kingdom k2)
+        public BLTTruce GetTruce(IFaction k1, IFaction k2)
         {
             var key = MakeKey(k1, k2);
             return key != null && _truces.TryGetValue(key, out var truce) ? truce : null;
         }
 
-        public BLTNAP GetNAP(Kingdom k1, Kingdom k2)
+        public BLTNAP GetNAP(IFaction k1, IFaction k2)
         {
             var key = MakeKey(k1, k2);
             return key != null && _naps.TryGetValue(key, out var nap) ? nap : null;
         }
 
-        public BLTAlliance GetAlliance(Kingdom k1, Kingdom k2)
+        public BLTAlliance GetAlliance(IFaction k1, IFaction k2)
         {
             var key = MakeKey(k1, k2);
             return key != null && _alliances.TryGetValue(key, out var alliance) ? alliance : null;
@@ -1052,82 +1117,82 @@ namespace BLTAdoptAHero
             return key != null && _tributes.TryGetValue(key, out var tribute) ? tribute : null;
         }
 
-        public BLTWar GetWar(Kingdom k1, Kingdom k2)
+        public BLTWar GetWar(IFaction k1, IFaction k2)
         {
             var key = MakeKey(k1, k2);
             return key != null && _wars.TryGetValue(key, out var war) ? war : null;
         }
 
-        public BLTPeaceProposal GetPeaceProposal(Kingdom proposer, Kingdom target)
+        public BLTPeaceProposal GetPeaceProposal(IFaction proposer, IFaction target)
         {
             var key = MakeKey(proposer, target);
             return key != null && _peaceProposals.TryGetValue(key, out var proposal) ? proposal : null;
         }
 
-        public BLTAllianceProposal GetAllianceProposal(Kingdom proposer, Kingdom target)
+        public BLTAllianceProposal GetAllianceProposal(IFaction proposer, IFaction target)
         {
             var key = MakeKey(proposer, target);
             return key != null && _allianceProposals.TryGetValue(key, out var proposal) ? proposal : null;
         }
-        public BLTTradeProposal GetTradeProposal(Kingdom proposer, Kingdom target)
+        public BLTTradeProposal GetTradeProposal(IFaction proposer, IFaction target)
         {
             var key = MakeKey(proposer, target);
             return key != null && _tradeProposals.TryGetValue(key, out var proposal) ? proposal : null;
         }
 
-        public BLTNAPProposal GetNAPProposal(Kingdom proposer, Kingdom target)
+        public BLTNAPProposal GetNAPProposal(IFaction proposer, IFaction target)
         {
             var key = MakeKey(proposer, target);
             return key != null && _napProposals.TryGetValue(key, out var proposal) ? proposal : null;
         }
 
         // List methods
-        public List<BLTWar> GetWarsInvolving(Kingdom k)
+        public List<BLTWar> GetWarsInvolving(IFaction k)
         {
             return _wars.Values.Where(w => w.Involves(k)).ToList();
         }
 
-        public List<BLTCTWProposal> GetCTWProposalsFor(Kingdom k)
+        public List<BLTCTWProposal> GetCTWProposalsFor(IFaction k)
         {
             return _ctwProposals.Values
                 .Where(p => p.CalledKingdomId == k?.StringId && !p.IsExpired())
                 .ToList();
         }
 
-        public List<BLTPeaceProposal> GetPeaceProposalsFor(Kingdom k)
+        public List<BLTPeaceProposal> GetPeaceProposalsFor(IFaction k)
         {
             return _peaceProposals.Values
                 .Where(p => p.TargetKingdomId == k?.StringId && !p.IsExpired())
                 .ToList();
         }
 
-        public List<BLTAllianceProposal> GetAllianceProposalsFor(Kingdom k)
+        public List<BLTAllianceProposal> GetAllianceProposalsFor(IFaction k)
         {
             return _allianceProposals.Values
                 .Where(p => p.TargetKingdomId == k?.StringId && !p.IsExpired())
                 .ToList();
         }
 
-        public List<BLTTradeProposal> GetTradeProposalsFor(Kingdom k)
+        public List<BLTTradeProposal> GetTradeProposalsFor(IFaction k)
         {
             return _tradeProposals.Values
                 .Where(p => p.TargetKingdomId == k?.StringId && !p.IsExpired())
                 .ToList();
         }
 
-        public List<BLTNAPProposal> GetNAPProposalsFor(Kingdom k)
+        public List<BLTNAPProposal> GetNAPProposalsFor(IFaction k)
         {
             return _napProposals.Values
                 .Where(p => p.TargetKingdomId == k?.StringId && !p.IsExpired())
                 .ToList();
         }
 
-        public List<BLTNAP> GetNAPsFor(Kingdom k)
+        public List<BLTNAP> GetNAPsFor(IFaction k)
         {
             return _naps.Values.Where(n => n.Involves(k)).ToList();
         }
 
-        public List<BLTAlliance> GetAlliancesFor(Kingdom k)
+        public List<BLTAlliance> GetAlliancesFor(IFaction k)
         {
             return _alliances.Values.Where(a => a.Involves(k)).ToList();
         }

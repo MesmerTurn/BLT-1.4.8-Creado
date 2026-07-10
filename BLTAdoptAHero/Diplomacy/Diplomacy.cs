@@ -7,7 +7,6 @@ using BannerlordTwitch.Localization;
 using BannerlordTwitch.Rewards;
 using BannerlordTwitch.Util;
 using BannerlordTwitch.Helpers;
-using BLTAdoptAHero.Actions.Util;
 using JetBrains.Annotations;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.Actions;
@@ -350,54 +349,59 @@ namespace BLTAdoptAHero
                 return;
             }
 
-            if (adoptedHero.Clan.Kingdom == null)
+            if (adoptedHero.Clan == null)
             {
-                // Keep settings in sync
-                if (BLTClanDiplomacyBehavior.Current != null)
-                    BLTClanDiplomacyBehavior.Current.MaxClanAlliances = settings.MaxClanAlliances;
-                if (BLTTreatyManager.Current != null)
-                    BLTTreatyManager.Current.MinWarDurationDays = settings.MinWarDuration;
+                onFailure("{=}You are not in a Clan!".Translate());
+                return;
+            }
 
-                // Single leader check here covers all clan-path branches
+            bool isIndependent = adoptedHero.Clan.Kingdom == null;
+            bool isLandedIndependent = isIndependent && BLTClanDiplomacyBehavior.IsLanded(adoptedHero.Clan);
+
+            // Keep settings in sync regardless of path
+            if (BLTClanDiplomacyBehavior.Current != null)
+                BLTClanDiplomacyBehavior.Current.MaxClanAlliances = settings.MaxClanAlliances;
+            if (BLTTreatyManager.Current != null)
+                BLTTreatyManager.Current.MinWarDurationDays = settings.MinWarDuration;
+
+            if (isIndependent && !isLandedIndependent)
+            {
+                // Unlanded independents: clan-alliance system + simple war/peace only.
+                // Kingdom-level diplomacy (nap/alliance/trade/ctw) is off-limits until landed.
                 if (!adoptedHero.IsClanLeader)
-                {
-                    onFailure("You must be your clan's leader to use diplomacy commands");
-                    return;
-                }
+                { onFailure("You must be your clan's leader to use diplomacy commands"); return; }
 
-                var clanArgs = context.Args.Split(
-                    new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
+                var clanArgs = context.Args.Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
                 var clanCmd = clanArgs.Length > 0 ? clanArgs[0].ToLower() : "";
                 var clanRest = clanArgs.Length > 1 ? clanArgs[1] : "";
 
                 switch (clanCmd)
                 {
-                    case "clan":
-                        HandleClanCommand(settings, adoptedHero, clanRest, onSuccess, onFailure);
-                        return;
+                    case "clan": HandleClanCommand(settings, adoptedHero, clanRest, onSuccess, onFailure); return;
                     case "war":
                         HandleClanWarCommand(settings, adoptedHero,
-                            clanRest.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries),
-                            onSuccess, onFailure);
-                        return;
+                        clanRest.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries), onSuccess, onFailure); return;
                     case "peace":
                         HandleClanPeaceCommand(settings, adoptedHero,
-                            clanRest.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries),
-                            onSuccess, onFailure);
-                        return;
-                    case "info":
-                        HandleClanInfo(adoptedHero, onSuccess, onFailure);
-                        return;
+                        clanRest.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries), onSuccess, onFailure); return;
+                    case "info": HandleClanInfo(adoptedHero, onSuccess, onFailure); return;
                     default:
-                        onFailure("Independent clan diplomacy: !diplomacy clan <ally|accept|break|info> [name] | war <target> | peace <target> | info");
+                        onFailure("Unlanded independent clan diplomacy: !diplomacy clan <ally|accept|break|info> [name] | " +
+                                  "war <target> | peace <target> | info. Acquire a fief to unlock kingdom-level diplomacy.");
                         return;
                 }
             }
 
+            // From here: kingdom members AND landed independent clans share the unified
+            // kingdom-level command set, with `declarer` standing in for "our side".
+            bool isKingdomLeader = adoptedHero.IsKingdomLeader;
+            bool isLandedClanLeader = isLandedIndependent && adoptedHero.IsClanLeader;
 
-            if (!adoptedHero.IsKingdomLeader)
+            if (!isKingdomLeader && !isLandedClanLeader)
             {
-                onFailure("{=TESTING}You must be a king to use diplomacy commands".Translate());
+                onFailure(isLandedIndependent
+                    ? "You must be your clan's leader to use diplomacy commands"
+                    : "{=TESTING}You must be a king to use diplomacy commands".Translate());
                 return;
             }
 
@@ -407,11 +411,9 @@ namespace BLTAdoptAHero
                 return;
             }
 
-            // Update the treaty manager's minimum war duration setting
-            if (BLTTreatyManager.Current != null)
-            {
-                BLTTreatyManager.Current.MinWarDurationDays = settings.MinWarDuration;
-            }
+            // Landed independents still get the clan-alliance subsystem via "clan ..." —
+            // nothing here blocks that; "clan" is handled as its own command below too.
+            IFaction declarer = adoptedHero.Clan.Kingdom ?? (IFaction)adoptedHero.Clan;
 
             var splitArgs = context.Args.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             var command = splitArgs[0].ToLower();
@@ -419,49 +421,30 @@ namespace BLTAdoptAHero
 
             switch (command)
             {
-                case "war":
-                    HandleWarCommand(settings, adoptedHero, args, onSuccess, onFailure);
+                case "clan":
+                    if (!isLandedIndependent) { onFailure("Only independent clans use 'clan' subcommands"); return; }
+                    HandleClanCommand(settings, adoptedHero, string.Join(" ", args), onSuccess, onFailure);
                     break;
-                case "warstance":
-                    HandleWarStanceCommand(settings, adoptedHero, args, onSuccess, onFailure);
-                    break;
-                case "peace":
-                    HandlePeaceCommand(settings, adoptedHero, args, onSuccess, onFailure);
-                    break;
-                case "nap":
-                    HandleNAPCommand(settings, adoptedHero, args, onSuccess, onFailure);
-                    break;
+                case "war": HandleWarCommand(settings, adoptedHero, declarer, args, onSuccess, onFailure); break;
+                case "warstance": HandleWarStanceCommand(settings, adoptedHero, args, onSuccess, onFailure); break;
+                case "peace": HandlePeaceCommand(settings, adoptedHero, declarer, args, onSuccess, onFailure); break;
+                case "nap": HandleNAPCommand(settings, adoptedHero, declarer, args, onSuccess, onFailure); break;
                 case "alliance":
-                    HandleAllianceCommand(settings, adoptedHero, args, onSuccess, onFailure);
-                    break;
-                case "ally":
-                    HandleAllianceCommand(settings, adoptedHero, args, onSuccess, onFailure);
-                    break;
-                case "trade":
-                    HandleTradeCommand(settings, adoptedHero, args, onSuccess, onFailure);
-                    break;
-                case "ctw":
-                    HandleCTWCommand(settings, adoptedHero, args, onSuccess, onFailure);
-                    break;
-                case "break":
-                    HandleBreakCommand(settings, adoptedHero, args, onSuccess, onFailure);
-                    break;
-                case "info":
-                    HandleInfoCommand(settings, adoptedHero, args, onSuccess, onFailure);
-                    break;
-                case "accept":
-                    HandleAcceptCommand(settings, adoptedHero, args, onSuccess, onFailure);
-                    break;
-                case "reject":
-                    HandleRejectCommand(settings, adoptedHero, args, onSuccess, onFailure);
-                    break;
+                case "ally": HandleAllianceCommand(settings, adoptedHero, declarer, args, onSuccess, onFailure); break;
+                case "trade": HandleTradeCommand(settings, adoptedHero, args, onSuccess, onFailure); break;
+                case "ctw": HandleCTWCommand(settings, adoptedHero, declarer, args, onSuccess, onFailure); break;
+                case "break": HandleBreakCommand(settings, adoptedHero, declarer, args, onSuccess, onFailure); break;
+                case "info": HandleInfoCommand(settings, adoptedHero, args, onSuccess, onFailure); break;
+                case "accept": HandleAcceptCommand(settings, adoptedHero, declarer, args, onSuccess, onFailure); break;
+                case "reject": HandleRejectCommand(settings, adoptedHero, declarer, args, onSuccess, onFailure); break;
                 default:
-                    onFailure("Invalid command. Use: war, peace, nap, alliance, trade, ctw, break, info, accept, reject");
+                    onFailure("Invalid command. Use: war, peace, nap, alliance, trade, ctw, break, info, accept, reject" +
+                              (isLandedIndependent ? ", clan" : ""));
                     break;
             }
         }
 
-        private void HandleWarCommand(Settings settings, Hero hero, string[] args, Action<string> onSuccess, Action<string> onFailure)
+        private void HandleWarCommand(Settings settings, Hero hero, IFaction Declarer, string[] args, Action<string> onSuccess, Action<string> onFailure)
         {
             if (!settings.WarEnabled)
             {
@@ -599,7 +582,7 @@ namespace BLTAdoptAHero
             }
         }
 
-        private void HandlePeaceCommand(Settings settings, Hero hero, string[] args, Action<string> onSuccess, Action<string> onFailure)
+        private void HandlePeaceCommand(Settings settings, Hero hero, IFaction Declarer, string[] args, Action<string> onSuccess, Action<string> onFailure)
         {
             if (!settings.PeaceEnabled)
             {
@@ -701,7 +684,7 @@ namespace BLTAdoptAHero
 
             // Check if this would break an alliance
             bool wouldBreakAlliance = false;
-            Kingdom alliancePartner = null;
+            IFaction alliancePartner = null;
 
             if (war != null && !war.IsMainParticipant(kingdom))
             {
@@ -879,7 +862,7 @@ namespace BLTAdoptAHero
                             war.RemoveAlly(kingdom);
 
                             // Recalculate alliance partner
-                            Kingdom alliancePartnerToBreak = null;
+                            IFaction alliancePartnerToBreak = null;
                             if (war.IsAttackerSide(kingdom))
                                 alliancePartnerToBreak = war.GetAttacker();
                             else
@@ -919,7 +902,7 @@ namespace BLTAdoptAHero
             }
         }
 
-        private void HandleNAPCommand(Settings settings, Hero hero, string[] args, Action<string> onSuccess, Action<string> onFailure)
+        private void HandleNAPCommand(Settings settings, Hero hero, IFaction Declarer, string[] args, Action<string> onSuccess, Action<string> onFailure)
         {
             if (!settings.NAPEnabled)
             {
@@ -1053,7 +1036,7 @@ namespace BLTAdoptAHero
             }
         }
 
-        private void HandleAllianceCommand(Settings settings, Hero hero, string[] args, Action<string> onSuccess, Action<string> onFailure)
+        private void HandleAllianceCommand(Settings settings, Hero hero, IFaction Declarer, string[] args, Action<string> onSuccess, Action<string> onFailure)
         {
             if (!settings.AllianceEnabled)
             {
@@ -1205,7 +1188,7 @@ namespace BLTAdoptAHero
             }
         }
 
-        private void HandleCTWCommand(Settings settings, Hero hero, string[] args, Action<string> onSuccess, Action<string> onFailure)
+        private void HandleCTWCommand(Settings settings, Hero hero, IFaction Declarer, string[] args, Action<string> onSuccess, Action<string> onFailure)
         {
             if (!settings.CTWEnabled)
             {
@@ -1305,7 +1288,7 @@ namespace BLTAdoptAHero
             //}
         }
 
-        private void HandleBreakCommand(Settings settings, Hero hero, string[] args, Action<string> onSuccess, Action<string> onFailure)
+        private void HandleBreakCommand(Settings settings, Hero hero, IFaction Declarer, string[] args, Action<string> onSuccess, Action<string> onFailure)
         {
             if (args.Length < 2)
             {
@@ -1648,7 +1631,7 @@ namespace BLTAdoptAHero
             onSuccess(sb.ToString());
         }
 
-        private void HandleAcceptCommand(Settings settings, Hero hero, string[] args, Action<string> onSuccess, Action<string> onFailure)
+        private void HandleAcceptCommand(Settings settings, Hero hero, IFaction Declarer, string[] args, Action<string> onSuccess, Action<string> onFailure)
         {
             if (args.Length < 2)
             {
@@ -1798,7 +1781,7 @@ namespace BLTAdoptAHero
                         // Accepting kingdom is an assisting ally - remove from war and break alliance with main participant
                         war.RemoveAlly(kingdom);
 
-                        Kingdom alliancePartnerToBreak = null;
+                        IFaction alliancePartnerToBreak = null;
                         if (war.IsAttackerSide(kingdom))
                             alliancePartnerToBreak = war.GetAttacker();
                         else
@@ -1913,7 +1896,7 @@ namespace BLTAdoptAHero
             {
                 BLTTreatyManager.Current.RemoveNAP(kingdom, target);
                 BLTTreatyManager.Current.RemoveAlliance(kingdom, target);
-                BLTTreatyManager.Current.RemoveTribute(kingdom, target);
+                BLTTreatyManager.Current.RemoveTribute(kingdom, (Kingdom)target);
 
                 var war = BLTTreatyManager.Current.GetWar(proposer, target);
                 if (war != null)
@@ -1937,7 +1920,7 @@ namespace BLTAdoptAHero
             }
         }
 
-        private void HandleRejectCommand(Settings settings, Hero hero, string[] args, Action<string> onSuccess, Action<string> onFailure)
+        private void HandleRejectCommand(Settings settings, Hero hero, IFaction Declarer, string[] args, Action<string> onSuccess, Action<string> onFailure)
         {
             if (args.Length < 2)
             {
@@ -2567,7 +2550,7 @@ namespace BLTAdoptAHero
 
             // Check for existing trade agreement
             TradeAgreementsCampaignBehavior tradeBehavior = Campaign.Current.GetCampaignBehavior<TradeAgreementsCampaignBehavior>();
-            if (tradeBehavior.HasTradeAgreementCompat(kingdom, target))
+            if (tradeBehavior.HasTradeAgreement(kingdom, target))
             {
                 onFailure($"Already have trade agreement with {target.Name}");
                 return;
@@ -2668,6 +2651,18 @@ namespace BLTAdoptAHero
             return Kingdom.All.FirstOrDefault(k =>
                 !k.IsEliminated &&
                 k.Name.ToString().IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        /// <summary>Resolves a diplomatic target by name: a Kingdom, or a landed independent Clan.</summary>
+        private static IFaction FindDiplomaticFaction(string name)
+        {
+            var k = Kingdom.All.FirstOrDefault(x =>
+                !x.IsEliminated && x.Name.ToString().IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0);
+            if (k != null) return k;
+
+            return Clan.All.FirstOrDefault(c =>
+                !c.IsEliminated && c.Kingdom == null && BLTClanDiplomacyBehavior.IsLanded(c)
+                && c.Name.ToString().IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
         // OLD DIPLOMACY FALLBACK (kept for when EnableNewDiplomacy = false)

@@ -9,7 +9,6 @@ using BannerlordTwitch.Localization;
 using BannerlordTwitch.Util;
 using BLTAdoptAHero.Annotations;
 using BLTAdoptAHero.Actions;
-using BLTAdoptAHero.Actions.Util;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.Actions;
 using TaleWorlds.CampaignSystem.CampaignBehaviors;
@@ -504,9 +503,6 @@ namespace BLTAdoptAHero.Actions
                 case "create":
                     HandleKCreateCommand(settings, adoptedHero, desiredName, onSuccess, onFailure);
                     break;
-                //case "vassal":
-                //    HandleVassalCommand(settings, adoptedHero, desiredName, onSuccess, onFailure);
-                        break;
                 case "release":
                     HandleReleaseCommand(settings, adoptedHero, desiredName, onSuccess, onFailure);
                     break;
@@ -529,7 +525,7 @@ namespace BLTAdoptAHero.Actions
                     HandlePolicyCommand(settings, adoptedHero, desiredName, onSuccess, onFailure);
                     break;
                 default:
-                    onFailure("{=FFxXuX5i}Invalid or empty kingdom action, try (join/merc/rebel/leave/create/vassal/release/expel/stats/armies/tax/sponsor/policy)".Translate());
+                    onFailure("{=FFxXuX5i}Invalid or empty kingdom action, try (join/merc/rebel/leave/create/release/expel/stats/armies/tax/sponsor/policy)".Translate());
                     break;
             }
 
@@ -742,7 +738,7 @@ namespace BLTAdoptAHero.Actions
                     continue;
 
                 StanceLink stance = adoptedHero.Clan.Kingdom.GetStanceWith(k);
-                if (tradeBehavior.HasTradeAgreementCompat(adoptedHero.Clan.Kingdom, k))
+                if (tradeBehavior.HasTradeAgreement(adoptedHero.Clan.Kingdom, k))
                 {
                     var tradeDate = tradeBehavior.GetTradeAgreementEndDate(adoptedHero.Clan.Kingdom, k);
                     int tradeDays = (int)(tradeDate - CampaignTime.Now).ToDays;
