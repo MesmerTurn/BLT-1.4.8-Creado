@@ -34,8 +34,12 @@ namespace BLTAdoptAHero
         public static System.Func<bool> GetUseNewHeroBarLayout;      // global (not per-hero) toggle, config lives in MakeBltGreatAgain now
         public static System.Func<bool> GetShowSideBars;             // global (not per-hero) toggle for the adrenaline/power side bars
         public static System.Func<bool> GetShowMissionOverlay;       // global (not per-hero) toggle for the browser-based MissionInfo overlay
+        public static System.Func<Hero, bool> IsWandererHero;        // true if this Hero is someone's recruited Wanderer companion (excluded from new adoptions)
+        public static System.Func<Hero, int> WandererKillCount;      // kills made by this hero's wanderer(s) this mission
 
         public static int Companions(Hero h)      => CompanionCount   != null && h != null ? SafeI(() => CompanionCount(h)) : 0;
+        public static bool IsWanderer(Hero h)      => IsWandererHero != null && h != null && SafeB(() => IsWandererHero(h), false);
+        public static int WandererKills(Hero h)    => WandererKillCount != null && h != null ? SafeI(() => WandererKillCount(h)) : 0;
         public static float Adrenaline(Hero h)     => AdrenalineFraction != null && h != null ? SafeF(() => AdrenalineFraction(h)) : 0f;
         public static int Damage(Hero h)           => DamageDealt      != null && h != null ? SafeI(() => DamageDealt(h)) : 0;
         public static float Power(Hero h)          => PowerFraction    != null && h != null ? SafeF(() => PowerFraction(h)) : 0f;
@@ -153,6 +157,7 @@ namespace BLTAdoptAHero
                 vm.LevelText = $"T{equipTier}";
 
                 vm.Companions = BLTExternalStats.Companions(hero);
+                vm.WandererKills = BLTExternalStats.WandererKills(hero);
                 vm.DamageText = Abbrev(BLTExternalStats.Damage(hero));
                 vm.AdrenalineFraction = BLTExternalStats.Adrenaline(hero);
                 vm.AdrenalineVisible = configShowSideBars && vm.AdrenalineFraction > 0f;
@@ -163,7 +168,7 @@ namespace BLTAdoptAHero
                 vm.ResurrectVisible = vm.ResurrectFraction > 0f || rs > 0;
                 vm.ResurrectText = vm.ResurrectFraction >= 1f ? "respawn" : (rs > 0 ? rs + "s" : "");
 
-                vm.StatsLine = $"{vm.Kills} · R{vm.RetinueAlive} -{vm.RetinueDead} · C{vm.Companions} · {vm.GoldText} · {vm.XpText} · {vm.DamageText}";
+                vm.StatsLine = $"{vm.Kills} · R{vm.RetinueAlive} -{vm.RetinueDead} · C{vm.Companions}{(vm.WandererKills > 0 ? $" ({vm.WandererKills}k)" : "")} · {vm.GoldText} · {vm.XpText} · {vm.DamageText}";
 
                 var agent = hero.GetAgent();
                 if (agent != null && agent.IsActive())
@@ -458,6 +463,14 @@ namespace BLTAdoptAHero
         {
             get => _companions;
             set { if (_companions != value) { _companions = value; OnPropertyChanged(nameof(Companions)); } }
+        }
+
+        private int _wandererKills;
+        [DataSourceProperty]
+        public int WandererKills
+        {
+            get => _wandererKills;
+            set { if (_wandererKills != value) { _wandererKills = value; OnPropertyChanged(nameof(WandererKills)); } }
         }
 
         private string _goldText;

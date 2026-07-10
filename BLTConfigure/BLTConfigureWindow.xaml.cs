@@ -115,6 +115,14 @@ namespace BLTConfigure
             e.Cancel = true;
         }
 
+        // Global Configs that belong under a dedicated "For TOR" heading instead of the
+        // generic "Global Configs" bucket - purely a display grouping, no persisted state.
+        private static readonly HashSet<string> TorGlobalConfigIds = new()
+        {
+            "MBGA - Culture Restriction",
+            "MBGA - Equip From Culture",
+        };
+
         public class TypeGroupDescription : GroupDescription
         {
             public override object GroupNameFromItem(object item, int level, CultureInfo culture)
@@ -122,6 +130,7 @@ namespace BLTConfigure
                 return item switch
                 {
                     null => "",
+                    GlobalConfig { Id: { } id } when TorGlobalConfigIds.Contains(id) => "For TOR",
                     GlobalConfig => "{=S7fvEW5l}Global Configs".Translate(),
                     Reward => "{=xljCKxH7}Channel Rewards".Translate(),
                     Command { Group: { Length: > 0 } group } => group,

@@ -143,6 +143,10 @@ namespace BLTAdoptAHero
                 customKeepFilter: element => customItems.Any(c => c.Item == element.Item),
                 restrictedItemIds: BLTAdoptAHeroModule.CommonConfig.RestrictedItemIds
             );
+            // DoPrestige() only marks EquipmentTier as -1 (a "needs reset" sentinel) - it never
+            // persists the actual post-reset tier, so without this the hero would be stuck forever
+            // re-equipping T1 (GetEquipmentTier() + 1 = 0) instead of progressing again after prestige.
+            BLTAdoptAHeroCampaignBehavior.Current.SetEquipmentTier(adoptedHero, 0);
 
             int newPrestige = BLTAdoptAHeroCampaignBehavior.Current.GetPrestigeLevel(adoptedHero);
             string newTitle = prestigeCfg.GetChatTitle(newPrestige);

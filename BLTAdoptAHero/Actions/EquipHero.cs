@@ -89,6 +89,11 @@ namespace BLTAdoptAHero
              PropertyOrder(11), UsedImplicitly]
             public bool ReequipInsteadOfUpgrade { get; set; }
 
+            [LocDisplayName("Armor Weight Category"),
+             LocDescription("Restrict armor selection to a weight class (Any = no restriction, based on item Weight)"),
+             PropertyOrder(12), UsedImplicitly]
+            public ArmorWeightCategory ArmorWeight { get; set; } = ArmorWeightCategory.Any;
+
             public void GenerateDocumentation(IDocumentationGenerator generator)
             {
                 if (ReequipInsteadOfUpgrade)
@@ -169,6 +174,18 @@ namespace BLTAdoptAHero
                 return;
             }
 
+            // Respect elite tier toggles (targetTier index 6 == "Tier 7 (Elite)", 7 == "Tier 8 (Legendary)")
+            if (targetTier >= 6 && !BLTAdoptAHeroModule.CommonConfig.EnableTier7)
+            {
+                onFailure("{=FZh7ZtGp}You cannot upgrade any further!".Translate());
+                return;
+            }
+            if (targetTier >= 7 && !BLTAdoptAHeroModule.CommonConfig.EnableTier8)
+            {
+                onFailure("{=FZh7ZtGp}You cannot upgrade any further!".Translate());
+                return;
+            }
+
             int cost = settings.GetTierCost(targetTier);
 
             int availableGold = BLTAdoptAHeroCampaignBehavior.Current.GetHeroGold(adoptedHero);
@@ -193,7 +210,8 @@ namespace BLTAdoptAHero
                 replaceSameTier: settings.ReequipInsteadOfUpgrade,
                 cultureFilter: cultureFilterSpecified ? selectedCulture : null,
                 cultureFilterSpecified: cultureFilterSpecified,
-                restrictedItemIds: restrictedItemIds);
+                restrictedItemIds: restrictedItemIds,
+                armorWeightFilter: settings.ArmorWeight);
 
             BLTAdoptAHeroCampaignBehavior.Current.SetEquipmentTier(adoptedHero, targetTier);
             BLTAdoptAHeroCampaignBehavior.Current.SetEquipmentClass(adoptedHero, charClass);
@@ -244,7 +262,7 @@ namespace BLTAdoptAHero
             || o.Type == ItemObject.ItemTypeEnum.Crossbow && hero?.CharacterObject?.GetPerkValue(DefaultPerks.Crossbow.MountedCrossbowman) == true
             ;
 
-        public static void UpgradeEquipment(Hero adoptedHero, int targetTier, HeroClassDef classDef, bool replaceSameTier, CultureObject cultureFilter = null, bool cultureFilterSpecified = false, Func<EquipmentElement, bool> customKeepFilter = null, HashSet<string> restrictedItemIds = null)
+        public static void UpgradeEquipment(Hero adoptedHero, int targetTier, HeroClassDef classDef, bool replaceSameTier, CultureObject cultureFilter = null, bool cultureFilterSpecified = false, Func<EquipmentElement, bool> customKeepFilter = null, HashSet<string> restrictedItemIds = null, ArmorWeightCategory armorWeightFilter = ArmorWeightCategory.Any)
         {
             customKeepFilter ??= _ => true;
             restrictedItemIds ??= new HashSet<string>();
@@ -429,7 +447,15 @@ namespace BLTAdoptAHero
             // Always want armor obviously
             foreach (var (index, itemType) in SkillGroup.ArmorIndexType)
             {
-                adoptedHero.BattleEquipment[index] = FindNewEquipmentByType(itemType);
+                var armor = armorWeightFilter == ArmorWeightCategory.Any
+                    ? FindNewEquipmentByType(itemType)
+                    : FindNewEquipmentByType(itemType, o => GetArmorWeightCategory(o) == armorWeightFilter);
+                // Fall back to unrestricted if nothing matched that weight band for this slot
+                if (armor.IsEmpty && armorWeightFilter != ArmorWeightCategory.Any)
+                {
+                    armor = FindNewEquipmentByType(itemType);
+                }
+                adoptedHero.BattleEquipment[index] = armor;
             }
 
             // We should assign a horse if using a class definition that specifies riding, OR 
@@ -666,6 +692,23 @@ namespace BLTAdoptAHero
             HeroIsMounted = 1 << 3,
         }
 
+        public enum ArmorWeightCategory
+        {
+            Any,
+            Light,
+            Medium,
+            Heavy,
+        }
+
+        // Rough weight bands based on real armor Weight values (cloth/leather ~1-6, mail ~6-14, plate ~14+)
+        public static ArmorWeightCategory GetArmorWeightCategory(ItemObject item)
+        {
+            float weight = item.Weight;
+            if (weight <= 6f) return ArmorWeightCategory.Light;
+            if (weight <= 14f) return ArmorWeightCategory.Medium;
+            return ArmorWeightCategory.Heavy;
+        }
+
         public static ItemObject FindRandomTieredEquipment(int tier, Hero hero, bool mustBeUsableMounted, FindFlags flags = FindFlags.None, Func<ItemObject, bool> filter = null, CultureObject cultureFilter = null, bool cultureFilterSpecified = false)
         {
             var restrictedItemIds = BLTAdoptAHeroModule.CommonConfig.RestrictedItemIds;
@@ -682,17 +725,25 @@ namespace BLTAdoptAHero
                 )
                 .ToList();
 
-            // If culture filter is specified, find the highest tier available within that culture
+            // If culture filter is specified, pick the nearest tier within that culture that does
+            // NOT exceed the hero's tier (never upgrade above the hero's tier; lower is OK).
             if (cultureFilterSpecified)
             {
-                // Group by tier and get the highest tier available
-                var tieredItems = items.Where(i => !restrictedItemIds.Contains(i.StringId ?? ""))
-                    .GroupBy(item => (int)item.Tier)                   
-                    .OrderByDescending(g => g.Key)
-                    .ToList();
-
-                // Return a random item from the highest tier group
-                return tieredItems.FirstOrDefault()?.SelectRandom();
+                var allowed = items.Where(i => !restrictedItemIds.Contains(i.StringId ?? "")).ToList();
+                var atOrBelow = allowed.Where(i => (int)i.Tier <= tier).ToList();
+                if (atOrBelow.Count > 0)
+                {
+                    // Highest tier at or below the cap = nearest acceptable tier.
+                    return atOrBelow
+                        .GroupBy(item => (int)item.Tier)
+                        .OrderByDescending(g => g.Key)
+                        .FirstOrDefault()?.SelectRandom();
+                }
+                // Culture only has items above the hero's tier: fall back to the lowest available.
+                return allowed
+                    .GroupBy(item => (int)item.Tier)
+                    .OrderBy(g => g.Key)
+                    .FirstOrDefault()?.SelectRandom();
             }
             else if (flags.HasFlag(FindFlags.RequireExactTier))
             {
@@ -707,13 +758,22 @@ namespace BLTAdoptAHero
         public static ItemObject SelectRandomItemNearestTier(IEnumerable<ItemObject> items, int tier)
         {
             var restrictedItemIds = BLTAdoptAHeroModule.CommonConfig.RestrictedItemIds;
-            // This should order the tier groups to be
-            // (closest tier below the desired one), (closest tier above the desired one), etc...
-            var tieredItems = items.Where(i => !restrictedItemIds.Contains(i.StringId ?? "")).GroupBy(item => (int)item.Tier)
-                .OrderBy(t => 100 * Math.Abs(tier - t.Key) + t.Key)
-                .ToList();
-
-            return tieredItems
+            var allowed = items.Where(i => !restrictedItemIds.Contains(i.StringId ?? "")).ToList();
+            // Never select an item above the hero's tier when one at or below exists
+            // (lower tier is acceptable, higher is not).
+            var atOrBelow = allowed.Where(i => (int)i.Tier <= tier).ToList();
+            if (atOrBelow.Count > 0)
+            {
+                return atOrBelow
+                    .GroupBy(item => (int)item.Tier)
+                    .OrderByDescending(g => g.Key)   // highest tier at or below = nearest acceptable
+                    .FirstOrDefault()?
+                    .SelectRandom();
+            }
+            // Only higher tiers exist: pick the closest one above.
+            return allowed
+                .GroupBy(item => (int)item.Tier)
+                .OrderBy(g => g.Key)
                 .FirstOrDefault()?
                 .SelectRandom();
         }

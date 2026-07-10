@@ -47,6 +47,7 @@ namespace BLTAdoptAHero.UI
 
             [UsedImplicitly] public int DamageDealt;
             [UsedImplicitly] public int CompanionCount;
+            [UsedImplicitly] public int WandererKills;
             [UsedImplicitly] public float AdrenalineFractionRemaining;
             [UsedImplicitly] public int ClassLevel;
         }
@@ -55,26 +56,32 @@ namespace BLTAdoptAHero.UI
 
         public override Task OnConnected()
         {
-            Clients.Caller.setKeyLabels(new
-            {
-                Level = "Level",
-                Kills = "{=AM2zlkem}Kills".Translate(),
-                Retinue = "Retinue",
-                Companions = "Clone",
-                Gold = "{=o0Q8Y1Qg}Gold".Translate(),
-                XP = "{=VtEJiMWy}XP".Translate(),
-                Damage = "Damage",
-            });
+            Clients.Caller.setKeyLabels(GetKeyLabels());
             Update();
             return base.OnConnected();
         }
+
+        private static object GetKeyLabels() => new
+        {
+            Level = "Level",
+            Kills = "{=AM2zlkem}Kills".Translate(),
+            Retinue = "Retinue",
+            Companions = "Wanderers",
+            Gold = "{=o0Q8Y1Qg}Gold".Translate(),
+            XP = "{=VtEJiMWy}XP".Translate(),
+            RetinueKills = "RetinueKills",
+            Damage = "Damage",
+            WandererKills = "Wanderer Kills",
+            UseNewHeroBarLayout = BLTExternalStats.UseNewHeroBarLayout(),
+        };
 
         public static void Update()
         {
             lock (heroState)
             {
-                GlobalHost.ConnectionManager.GetHubContext<MissionInfoHub>()
-                    .Clients.All.update(heroState);
+                var hubContext = GlobalHost.ConnectionManager.GetHubContext<MissionInfoHub>();
+                hubContext.Clients.All.setKeyLabels(GetKeyLabels());
+                hubContext.Clients.All.update(heroState);
             }
         }
 

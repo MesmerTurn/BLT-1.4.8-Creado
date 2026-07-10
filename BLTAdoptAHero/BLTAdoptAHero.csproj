@@ -361,6 +361,7 @@
     <Compile Include="Actions\Util\CustomItems.cs" />
     <Compile Include="Actions\Util\HeroClassDef.cs" />
     <Compile Include="Actions\Util\ItemModifierAccess.cs" />
+    <Compile Include="Actions\Util\VersionCompat.cs" />
     <Compile Include="Actions\Util\KillStreakDef.cs" />
     <Compile Include="Actions\Util\SkillRangeDef.cs" />
     <Compile Include="Behaviors\BLTAdoptAHeroCampaignBehavior.cs" />

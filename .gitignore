@@ -1,0 +1,9 @@
+[Bb]in/
+[Oo]bj/
+build/
+packages/
+*.user
+*.suo
+.vs/
+*.dll
+*.pdb

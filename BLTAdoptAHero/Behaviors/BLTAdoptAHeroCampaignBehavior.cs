@@ -30,6 +30,37 @@ namespace BLTAdoptAHero
     {
         public static BLTAdoptAHeroCampaignBehavior Current => Campaign.Current?.GetCampaignBehavior<BLTAdoptAHeroCampaignBehavior>();
 
+        // Tier 1 troop of every vanilla "minor faction" tree (the tavern/notable-recruitable
+        // groups like Skolderbrotva, Wolfskins, Company of the Boar etc) - these aren't part of
+        // any CultureObject's BasicTroop/EliteBasicTroop, so retinue recruitment doesn't see them
+        // unless explicitly opted in via RetinueSettings.UseMinorFactionTroops.
+        private static readonly string[] MinorFactionTroopIds =
+        {
+            "skolderbrotva_tier_1",
+            "wolfskins_tier_1",
+            "company_of_the_boar_tier_1",
+            "brotherhood_of_woods_tier_1",
+            "legion_of_the_betrayed_tier_1",
+            "embers_of_flame_tier_1",
+            "hidden_hand_tier_1",
+            "eleftheroi_tier_1",
+            "beni_zilal_tier_1",
+            "jawwal_tier_1",
+            "karakhuzaits_tier_1",
+            "lakepike_tier_1",
+            "forest_people_tier_1",
+            "ghilman_tier_1",
+        };
+
+        private static List<CharacterObject> minorFactionTroopTypesCache;
+        private static List<CharacterObject> GetMinorFactionTroopTypes()
+        {
+            return minorFactionTroopTypesCache ??= MinorFactionTroopIds
+                .Select(id => MBObjectManager.Instance.GetObject<CharacterObject>(id))
+                .Where(c => c != null)
+                .ToList();
+        }
+
         #region HeroData
         private class HeroData
         {
@@ -633,6 +664,32 @@ namespace BLTAdoptAHero
                 data.Gold = 0;
             }
             return inheritance;
+        }
+
+        // Transplants ALL BLT-tracked progress from a fallen hero onto a freshly created one. Used
+        // by the "reborn" flow: reviving the original Hero object left it in a state where it kept
+        // getting re-executed on sight, so instead we spawn a brand new Hero with none of that
+        // lingering death state and copy everything the viewer had earned onto it.
+        public void CloneHeroData(Hero source, Hero destination)
+        {
+            var src = GetHeroData(source, suppressAutoRetire: true);
+            var dst = GetHeroData(destination);
+
+            dst.Gold = src.Gold;
+            dst.SpentGold = src.SpentGold;
+            dst.Retinue = src.Retinue
+                .Select(r => new HeroData.RetinueData { TroopType = r.TroopType, Level = r.Level, SavedTroopIndex = r.SavedTroopIndex })
+                .ToList();
+            dst.Retinue2 = src.Retinue2
+                .Select(r => new HeroData.Retinue2Data { TroopType = r.TroopType, Level = r.Level, SavedTroopIndex = r.SavedTroopIndex })
+                .ToList();
+            dst.EquipmentTier = src.EquipmentTier;
+            dst.EquipmentClassID = src.EquipmentClassID;
+            dst.ClassID = src.ClassID;
+            dst.PrestigeLevel = src.PrestigeLevel;
+            dst.PrestigeKillCount = src.PrestigeKillCount;
+            dst.CustomItems = new List<EquipmentElement>(src.CustomItems);
+            dst.AchievementStats = src.AchievementStats;
         }
 
         private List<HeroData> GetAncestors(string name) =>
@@ -1309,6 +1366,12 @@ namespace BLTAdoptAHero
              PropertyOrder(3), UsedImplicitly]
             public bool UseEliteMilitiaTroops { get; set; } = true;
 
+            [LocDisplayName("{=}Use Minor Faction Troops"),
+             LocCategory("Troop Types", "{=qYhM3gcn}Troop Types"),
+             LocDescription("{=}Whether to allow the tavern/notable-recruitable minor faction troops (Skolderbrotva, Wolfskins, Company of the Boar, etc)"),
+             PropertyOrder(5), UsedImplicitly]
+            public bool UseMinorFactionTroops { get; set; }
+
             public void GenerateDocumentation(IDocumentationGenerator generator)
             {
                 generator.PropertyValuePair("{=UhUpH8C8}Max retinue".Translate(), $"{MaxRetinueSize}");
@@ -1320,6 +1383,7 @@ namespace BLTAdoptAHero
                 if (UseEliteTroops) allowed.Add("{=3gumlthG}Elite troops".Translate());
                 if (UseMilitiaTroops) allowed.Add("{=MilitiaTag}Militia troops".Translate());
                 if (UseEliteMilitiaTroops) allowed.Add("{=EliteMilitiaTag}Elite militia troops".Translate());
+                if (UseMinorFactionTroops) allowed.Add("{=}Minor faction troops".Translate());
                 generator.PropertyValuePair("{=uL7MfYPc}Allowed".Translate(), string.Join(", ", allowed));
             }
         }
@@ -1339,6 +1403,9 @@ namespace BLTAdoptAHero
                 })
                 // At least 2 upgrade tiers available
                 .Where(c => (c.UpgradeTargets?.FirstOrDefault()?.UpgradeTargets?.Any() == true) || ((settings.UseMilitiaTroops || settings.UseEliteMilitiaTroops) && (c == c.Culture.MeleeMilitiaTroop || c == c.Culture.RangedMilitiaTroop || c == c.Culture.MeleeEliteMilitiaTroop || c == c.Culture.RangedEliteMilitiaTroop)))
+                .Concat(settings.UseMinorFactionTroops
+                    ? GetMinorFactionTroopTypes().Where(c => c.UpgradeTargets?.FirstOrDefault()?.UpgradeTargets?.Any() == true)
+                    : Enumerable.Empty<CharacterObject>())
                 .ToList();
 
             if (!availableTroops.Any())
@@ -1482,17 +1549,22 @@ namespace BLTAdoptAHero
             }
         }
 
-        public void KillRetinueAtIndex(Hero retinueOwnerHero, int index)
+        // Returns the removed member's Level (1 = just hired, no upgrades) so callers can work out
+        // a gold refund, or -1 if the index was invalid.
+        public int KillRetinueAtIndex(Hero retinueOwnerHero, int index)
         {
             var heroRetinue = GetHeroData(retinueOwnerHero).Retinue;
 
             if (index >= 0 && index < heroRetinue.Count)
             {
+                int level = heroRetinue[index].Level;
                 heroRetinue.RemoveAt(index);
+                return level;
             }
             else
             {
                 Log.Error($"Invalid retinue index {index} for {retinueOwnerHero}. Retinue count: {heroRetinue.Count}");
+                return -1;
             }
         }
 
@@ -1600,6 +1672,12 @@ namespace BLTAdoptAHero
              PropertyOrder(3), UsedImplicitly]
             public bool UseEliteMilitiaTroops { get; set; } = true;
 
+            [LocDisplayName("{=}Use Minor Faction Troops"),
+             LocCategory("Troop Types", "{=qYhM3gcn}Troop Types"),
+             LocDescription("{=}Whether to allow the tavern/notable-recruitable minor faction troops (Skolderbrotva, Wolfskins, Company of the Boar, etc)"),
+             PropertyOrder(5), UsedImplicitly]
+            public bool UseMinorFactionTroops { get; set; }
+
             public void GenerateDocumentation(IDocumentationGenerator generator)
             {
                 generator.PropertyValuePair("{=UhUpH8C8}Max secondary retinue".Translate(), $"{MaxRetinue2Size}");
@@ -1611,6 +1689,7 @@ namespace BLTAdoptAHero
                 if (UseEliteTroops) allowed.Add("{=3gumlthG}Elite troops".Translate());
                 if (UseMilitiaTroops) allowed.Add("{=MilitiaTag}Militia troops".Translate());
                 if (UseEliteMilitiaTroops) allowed.Add("{=EliteMilitiaTag}Elite militia troops".Translate());
+                if (UseMinorFactionTroops) allowed.Add("{=}Minor faction troops".Translate());
                 generator.PropertyValuePair("{=uL7MfYPc}Allowed".Translate(), string.Join(", ", allowed));
             }
         }
@@ -1630,6 +1709,9 @@ namespace BLTAdoptAHero
                 })
                 // At least 2 upgrade tiers available
                 .Where(c => (c.UpgradeTargets?.FirstOrDefault()?.UpgradeTargets?.Any() == true) || ((settings.UseMilitiaTroops || settings.UseEliteMilitiaTroops) && (c == c.Culture.MeleeMilitiaTroop || c == c.Culture.RangedMilitiaTroop || c == c.Culture.MeleeEliteMilitiaTroop || c == c.Culture.RangedEliteMilitiaTroop)))
+                .Concat(settings.UseMinorFactionTroops
+                    ? GetMinorFactionTroopTypes().Where(c => c.UpgradeTargets?.FirstOrDefault()?.UpgradeTargets?.Any() == true)
+                    : Enumerable.Empty<CharacterObject>())
                 .ToList();
 
             if (!availableTroops.Any())
@@ -1825,7 +1907,9 @@ namespace BLTAdoptAHero
                     // Don't want notables ever
                     && !h.IsNotable
                     // Only of age characters can be used
-                    && h.Age >= Campaign.Current.Models.AgeModel.HeroComesOfAge)
+                    && h.Age >= Campaign.Current.Models.AgeModel.HeroComesOfAge
+                    // Don't offer up someone's recruited Wanderer companion (MakeBltGreatAgain) as adoptable
+                    && !BLTExternalStats.IsWanderer(h))
                 .Where(filter ?? (_ => true))
                 .Where(n => !n.Name.Contains(BLTAdoptAHeroModule.Tag) || !n.Name.Contains(BLTAdoptAHeroModule.DevTag));
 

@@ -393,6 +393,7 @@ namespace BLTAdoptAHero
                     RetinueKills = heroState.RetinueKills,
                     DamageDealt = BLTExternalStats.Damage(hero),
                     CompanionCount = BLTExternalStats.Companions(hero),
+                    WandererKills = BLTExternalStats.WandererKills(hero),
                     AdrenalineFractionRemaining = BLTExternalStats.Adrenaline(hero),
                     ClassLevel = GlobalHeroClassConfig.Get()?.GetHeroClassLevel(hero) ?? 0,
                 });
