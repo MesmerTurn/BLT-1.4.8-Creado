@@ -29,6 +29,7 @@ namespace BLTAdoptAHero.Actions.Upgrades
         public bool Enabled { get; set; } = true;
 
         [LocDisplayName("Allow List Command"), LocCategory("General", "General"),
+         LocDescription("Lets viewers list capital-eligible settlements with the list command"),
          PropertyOrder(2), UsedImplicitly]
         public bool AllowListCommand { get; set; } = true;
 
@@ -64,20 +65,20 @@ namespace BLTAdoptAHero.Actions.Upgrades
         public int CooldownDays { get; set; } = 30;
 
         // ── Settlement Effects ────────────────────────────────────────────────
-        [LocDisplayName("Loyalty Daily (Flat)"), LocCategory("Settlement Effects", "Settlement Effects"), PropertyOrder(1), UsedImplicitly] public float LoyaltyDailyFlat { get; set; }
-        [LocDisplayName("Loyalty Daily (%)"), LocCategory("Settlement Effects", "Settlement Effects"), PropertyOrder(2), UsedImplicitly] public float LoyaltyDailyPercent { get; set; }
-        [LocDisplayName("Prosperity Daily (Flat)"), LocCategory("Settlement Effects", "Settlement Effects"), PropertyOrder(3), UsedImplicitly] public float ProsperityDailyFlat { get; set; }
-        [LocDisplayName("Prosperity Daily (%)"), LocCategory("Settlement Effects", "Settlement Effects"), PropertyOrder(4), UsedImplicitly] public float ProsperityDailyPercent { get; set; }
-        [LocDisplayName("Security Daily (Flat)"), LocCategory("Settlement Effects", "Settlement Effects"), PropertyOrder(5), UsedImplicitly] public float SecurityDailyFlat { get; set; }
-        [LocDisplayName("Security Daily (%)"), LocCategory("Settlement Effects", "Settlement Effects"), PropertyOrder(6), UsedImplicitly] public float SecurityDailyPercent { get; set; }
-        [LocDisplayName("Militia Daily (Flat)"), LocCategory("Settlement Effects", "Settlement Effects"), PropertyOrder(7), UsedImplicitly] public float MilitiaDailyFlat { get; set; }
-        [LocDisplayName("Militia Daily (%)"), LocCategory("Settlement Effects", "Settlement Effects"), PropertyOrder(8), UsedImplicitly] public float MilitiaDailyPercent { get; set; }
-        [LocDisplayName("Food Daily (Flat)"), LocCategory("Settlement Effects", "Settlement Effects"), PropertyOrder(9), UsedImplicitly] public float FoodDailyFlat { get; set; }
-        [LocDisplayName("Food Daily (%)"), LocCategory("Settlement Effects", "Settlement Effects"), PropertyOrder(10), UsedImplicitly] public float FoodDailyPercent { get; set; }
-        [LocDisplayName("Tax Income (Flat)"), LocCategory("Settlement Effects", "Settlement Effects"), PropertyOrder(11), UsedImplicitly] public int TaxIncomeFlat { get; set; }
-        [LocDisplayName("Tax Income (%)"), LocCategory("Settlement Effects", "Settlement Effects"), PropertyOrder(12), UsedImplicitly] public float TaxIncomePercent { get; set; }
-        [LocDisplayName("Garrison Capacity Bonus"), LocCategory("Settlement Effects", "Settlement Effects"), PropertyOrder(13), UsedImplicitly] public int GarrisonCapacityBonus { get; set; }
-        [LocDisplayName("Hearth Daily"), LocCategory("Settlement Effects", "Settlement Effects"), PropertyOrder(14), UsedImplicitly] public float HearthDaily { get; set; }
+        [LocDisplayName("Loyalty Daily (Flat)"), LocCategory("Settlement Effects", "Settlement Effects"), LocDescription("Flat loyalty added to the capital settlement each day"), PropertyOrder(1), UsedImplicitly] public float LoyaltyDailyFlat { get; set; }
+        [LocDisplayName("Loyalty Daily (%)"), LocCategory("Settlement Effects", "Settlement Effects"), LocDescription("Percentage loyalty bonus added to the capital settlement each day"), PropertyOrder(2), UsedImplicitly] public float LoyaltyDailyPercent { get; set; }
+        [LocDisplayName("Prosperity Daily (Flat)"), LocCategory("Settlement Effects", "Settlement Effects"), LocDescription("Flat prosperity added to the capital settlement each day"), PropertyOrder(3), UsedImplicitly] public float ProsperityDailyFlat { get; set; }
+        [LocDisplayName("Prosperity Daily (%)"), LocCategory("Settlement Effects", "Settlement Effects"), LocDescription("Percentage prosperity bonus added to the capital settlement each day"), PropertyOrder(4), UsedImplicitly] public float ProsperityDailyPercent { get; set; }
+        [LocDisplayName("Security Daily (Flat)"), LocCategory("Settlement Effects", "Settlement Effects"), LocDescription("Flat security added to the capital settlement each day"), PropertyOrder(5), UsedImplicitly] public float SecurityDailyFlat { get; set; }
+        [LocDisplayName("Security Daily (%)"), LocCategory("Settlement Effects", "Settlement Effects"), LocDescription("Percentage security bonus added to the capital settlement each day"), PropertyOrder(6), UsedImplicitly] public float SecurityDailyPercent { get; set; }
+        [LocDisplayName("Militia Daily (Flat)"), LocCategory("Settlement Effects", "Settlement Effects"), LocDescription("Flat militia added to the capital settlement each day"), PropertyOrder(7), UsedImplicitly] public float MilitiaDailyFlat { get; set; }
+        [LocDisplayName("Militia Daily (%)"), LocCategory("Settlement Effects", "Settlement Effects"), LocDescription("Percentage militia bonus added to the capital settlement each day"), PropertyOrder(8), UsedImplicitly] public float MilitiaDailyPercent { get; set; }
+        [LocDisplayName("Food Daily (Flat)"), LocCategory("Settlement Effects", "Settlement Effects"), LocDescription("Flat food stores added to the capital settlement each day"), PropertyOrder(9), UsedImplicitly] public float FoodDailyFlat { get; set; }
+        [LocDisplayName("Food Daily (%)"), LocCategory("Settlement Effects", "Settlement Effects"), LocDescription("Percentage food bonus added to the capital settlement each day"), PropertyOrder(10), UsedImplicitly] public float FoodDailyPercent { get; set; }
+        [LocDisplayName("Tax Income (Flat)"), LocCategory("Settlement Effects", "Settlement Effects"), LocDescription("Flat extra gold collected from the capital settlement each day"), PropertyOrder(11), UsedImplicitly] public int TaxIncomeFlat { get; set; }
+        [LocDisplayName("Tax Income (%)"), LocCategory("Settlement Effects", "Settlement Effects"), LocDescription("Percentage bonus applied to gold collected from the capital settlement each day"), PropertyOrder(12), UsedImplicitly] public float TaxIncomePercent { get; set; }
+        [LocDisplayName("Garrison Capacity Bonus"), LocCategory("Settlement Effects", "Settlement Effects"), LocDescription("Extra garrison troop capacity granted to the capital settlement"), PropertyOrder(13), UsedImplicitly] public int GarrisonCapacityBonus { get; set; }
+        [LocDisplayName("Hearth Daily"), LocCategory("Settlement Effects", "Settlement Effects"), LocDescription("Flat hearth (population growth) added to the capital settlement each day"), PropertyOrder(14), UsedImplicitly] public float HearthDaily { get; set; }
 
         // ── Clan Effects ──────────────────────────────────────────────────────
         [LocDisplayName("Party Size Bonus"), LocCategory("Clan Effects", "Clan Effects (Owning Clan)"),
@@ -86,14 +87,17 @@ namespace BLTAdoptAHero.Actions.Upgrades
         public int PartySizeBonus { get; set; }
 
         [LocDisplayName("Party Speed Bonus"), LocCategory("Clan Effects", "Clan Effects (Owning Clan)"),
+         LocDescription("Movement speed bonus applied to all parties of the clan that owns the capital"),
          PropertyOrder(2), UsedImplicitly]
         public float PartySpeedBonus { get; set; }
 
         [LocDisplayName("Renown Daily"), LocCategory("Clan Effects", "Clan Effects (Owning Clan)"),
+         LocDescription("Renown gained each day by the clan that owns the capital"),
          PropertyOrder(3), UsedImplicitly]
         public float RenownDaily { get; set; }
 
         [LocDisplayName("Influence Daily"), LocCategory("Clan Effects", "Clan Effects (Owning Clan)"),
+         LocDescription("Influence gained each day by the clan that owns the capital"),
          PropertyOrder(4), UsedImplicitly]
         public float InfluenceDaily { get; set; }
 
