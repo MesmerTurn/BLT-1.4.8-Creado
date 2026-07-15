@@ -12,6 +12,7 @@ namespace BLTAdoptAHero.Patches
         [UsedImplicitly]
         public static void Postfix(Agent __instance, ref float __result)
         {
+            if (__instance == null || !__instance.IsActive()) return;
             var hero = (__instance.Character as CharacterObject)?.HeroObject;
             if (hero == null) return;
 
@@ -34,7 +35,7 @@ namespace BLTAdoptAHero.Patches
         [UsedImplicitly]
         public static void Prefix(Agent attacker, ref Blow b)
         {
-            if (attacker == null) return;
+            if (attacker == null || !attacker.IsActive()) return;
             var hero = (attacker.Character as CharacterObject)?.HeroObject;
             if (hero == null) return;
 
@@ -65,6 +66,7 @@ namespace BLTAdoptAHero.Patches
         [UsedImplicitly]
         public static void Postfix(Agent __instance, ref float __result)
         {
+            if (__instance == null || !__instance.IsActive()) return;
             var hero = (__instance.Character as CharacterObject)?.HeroObject;
             if (hero == null) return;
 
