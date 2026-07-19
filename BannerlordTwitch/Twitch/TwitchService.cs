@@ -130,6 +130,7 @@ namespace BannerlordTwitch
         // ── Extension PubSub ─────────────────────────────────────────────────
         private ExtensionPubSubService extensionPubSub;
         private LocalRelayService localRelay;
+        private TTVBridgeService ttvBridge;
 
         public TwitchService()
         {
@@ -211,6 +212,23 @@ namespace BannerlordTwitch
                     else
                     {
                         Log.Info("[Extension] ExtensionClientId/ExtensionSecret not configured — PubSub disabled");
+                    }
+
+                    if (authSettings.TTVBridgeConfigured)
+                    {
+                        try
+                        {
+                            ttvBridge = new TTVBridgeService(authSettings.TTVBridgeUrl, channelId, authSettings.TTVBridgeSecret);
+                            Log.Info("[TTVBridge] Snapshot push started");
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error($"[TTVBridge] Init failed: {ex.Message}");
+                        }
+                    }
+                    else
+                    {
+                        Log.Info("[TTVBridge] TTVBridgeUrl/TTVBridgeSecret not configured — panel push disabled");
                     }
 
                     // Connect the chatbot
@@ -786,6 +804,7 @@ namespace BannerlordTwitch
             RemoveRewards();
             bot?.Dispose();
             _ = eventsub?.StopAsync(token);
+            ttvBridge?.Dispose();
             //pubSub?.Disconnect();
             Log.LogFeedSystem("{=mEcBdqNC}TwitchService stopped".Translate());
         }
