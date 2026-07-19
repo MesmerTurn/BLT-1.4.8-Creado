@@ -417,6 +417,7 @@
     <Compile Include="Overlay\CampaignMap\MapHub.cs" />
     <Compile Include="Overlay\MissionInfo\MissionInfo.cs" />
     <Compile Include="Overlay\Tournament\Tournament.cs" />
+    <Compile Include="Overlay\TTVBridgeSnapshotProvider.cs" />
     <Compile Include="Powers\AbsorbHealthPower.cs" />
     <Compile Include="Powers\AddDamagePower.cs" />
     <Compile Include="Powers\AddHealthPower.cs" />
