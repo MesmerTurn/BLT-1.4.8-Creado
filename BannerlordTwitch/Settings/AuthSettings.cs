@@ -42,6 +42,20 @@ namespace BannerlordTwitch
             !string.IsNullOrWhiteSpace(ExtensionClientId) &&
             !string.IsNullOrWhiteSpace(ExtensionSecret);
 
+        // ── BannerlordTTV Bridge ─────────────────────────────────────────────
+        // URL of your deployed Cloudflare Worker, e.g.
+        // "https://bannerlordttv-bridge.<your-subdomain>.workers.dev"
+        public string TTVBridgeUrl { get; set; }
+
+        // Shared secret set via `wrangler secret put BRIDGE_SECRET` on the Worker.
+        // Sent as "Authorization: Bearer <secret>" on every state push.
+        public string TTVBridgeSecret { get; set; }
+
+        [YamlDotNet.Serialization.YamlIgnore]
+        public bool TTVBridgeConfigured =>
+            !string.IsNullOrWhiteSpace(TTVBridgeUrl) &&
+            !string.IsNullOrWhiteSpace(TTVBridgeSecret);
+
         // ── Persistence ──────────────────────────────────────────────────────
 
         private static TaleWorlds.Library.PlatformFilePath AuthFilePath =>
