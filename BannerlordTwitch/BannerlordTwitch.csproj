@@ -659,6 +659,7 @@
     <Compile Include="Twitch\RandomOverlay\BLTProtocol.cs" />
     <Compile Include="Twitch\RandomOverlay\ExtensionReceiverService.cs" />
     <Compile Include="Twitch\RandomOverlay\LocalRelayService.cs" />
+    <Compile Include="Twitch\TTVBridgeRegistry.cs" />
     <Compile Include="Twitch\TwitchEventSubSocket.cs" />
     <Compile Include="Twitch\TwitchService.Bot.cs" />
     <Compile Include="Twitch\TwitchService.cs" />
