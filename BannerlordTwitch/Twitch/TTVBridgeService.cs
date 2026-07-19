@@ -39,7 +39,8 @@ namespace BannerlordTwitch
                     object snapshot = null;
                     await MainThreadSync.RunWaitAsync(() =>
                     {
-                        snapshot = TTVBridgeRegistry.SnapshotProvider?.Invoke();
+                        try { snapshot = TTVBridgeRegistry.SnapshotProvider?.Invoke(); }
+                        catch (Exception ex) { Log.Error($"[TTVBridge] SnapshotProvider threw: {ex.Message}"); }
                     });
 
                     if (snapshot != null)
