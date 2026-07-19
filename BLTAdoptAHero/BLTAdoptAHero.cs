@@ -69,7 +69,7 @@ namespace BLTAdoptAHero
             TournamentHub.Register();
             MissionInfoHub.Register();
             MapHub.Register();
-            
+            Overlay.TTVBridgeSnapshotProvider.Register();
         }
 
         public override void OnMissionBehaviorInitialize(Mission mission)
