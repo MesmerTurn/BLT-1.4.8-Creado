@@ -11,7 +11,8 @@ namespace BannerlordTwitch
 {
     /// <summary>
     /// Periodically builds a snapshot via TTVBridgeRegistry.SnapshotProvider (on the
-    /// main thread) and, if it changed, POSTs it to the BannerlordTTV Worker.
+    /// main thread) and unconditionally POSTs it to the BannerlordTTV Worker, so the
+    /// Worker's TTL-based liveness signal stays accurate even when the snapshot is unchanged.
     /// </summary>
     public class TTVBridgeService : IDisposable
     {
@@ -21,7 +22,6 @@ namespace BannerlordTwitch
         private readonly string _url;
         private readonly CancellationTokenSource _cts = new();
         private bool _disposed;
-        private string _lastSentJson;
 
         public TTVBridgeService(string bridgeUrl, string channelId, string secret)
         {
@@ -46,11 +46,7 @@ namespace BannerlordTwitch
                     if (snapshot != null)
                     {
                         var json = JsonSerializer.Serialize(snapshot);
-                        if (json != _lastSentJson)
-                        {
-                            await PostAsync(json).ConfigureAwait(false);
-                            _lastSentJson = json;
-                        }
+                        await PostAsync(json).ConfigureAwait(false);
                     }
                 }
                 catch (Exception ex)
