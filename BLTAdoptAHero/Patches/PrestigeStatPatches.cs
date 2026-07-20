@@ -13,6 +13,7 @@ namespace BLTAdoptAHero.Patches
         public static void Postfix(Agent __instance, ref float __result)
         {
             if (__instance == null || !__instance.IsActive()) return;
+            if (BLTAdoptAHeroModule.CommonConfig == null) return;   // not set outside Campaign game type (e.g. Custom Battle)
             var hero = (__instance.Character as CharacterObject)?.HeroObject;
             if (hero == null) return;
 
@@ -22,7 +23,7 @@ namespace BLTAdoptAHero.Patches
                 __result *= BLTAdoptAHeroModule.CommonConfig.Tier8HealthMultiplier;
 
             int prestige = BLTAdoptAHeroCampaignBehavior.Current?.GetPrestigeLevel(hero) ?? 0;
-            if (prestige > 0)
+            if (prestige > 0 && BLTAdoptAHeroModule.CommonConfig.PrestigeConfig != null)
                 __result += BLTAdoptAHeroModule.CommonConfig.PrestigeConfig.GetCumulativeHPBonus(prestige);
         }
     }
@@ -36,6 +37,7 @@ namespace BLTAdoptAHero.Patches
         public static void Prefix(Agent attacker, ref Blow b)
         {
             if (attacker == null || !attacker.IsActive()) return;
+            if (BLTAdoptAHeroModule.CommonConfig == null) return;   // not set outside Campaign game type (e.g. Custom Battle)
             var hero = (attacker.Character as CharacterObject)?.HeroObject;
             if (hero == null) return;
 
@@ -47,7 +49,7 @@ namespace BLTAdoptAHero.Patches
                 mult *= BLTAdoptAHeroModule.CommonConfig.Tier7PowerMultiplier;
 
             int prestige = BLTAdoptAHeroCampaignBehavior.Current?.GetPrestigeLevel(hero) ?? 0;
-            int dmgBonus = prestige > 0
+            int dmgBonus = prestige > 0 && BLTAdoptAHeroModule.CommonConfig.PrestigeConfig != null
                 ? BLTAdoptAHeroModule.CommonConfig.PrestigeConfig.GetCumulativeDamageBonusPercent(prestige)
                 : 0;
             if (dmgBonus > 0)
@@ -67,11 +69,12 @@ namespace BLTAdoptAHero.Patches
         public static void Postfix(Agent __instance, ref float __result)
         {
             if (__instance == null || !__instance.IsActive()) return;
+            if (BLTAdoptAHeroModule.CommonConfig == null) return;   // not set outside Campaign game type (e.g. Custom Battle)
             var hero = (__instance.Character as CharacterObject)?.HeroObject;
             if (hero == null) return;
 
             int prestige = BLTAdoptAHeroCampaignBehavior.Current?.GetPrestigeLevel(hero) ?? 0;
-            if (prestige > 0)
+            if (prestige > 0 && BLTAdoptAHeroModule.CommonConfig.PrestigeConfig != null)
             {
                 int armorBonus = BLTAdoptAHeroModule.CommonConfig.PrestigeConfig.GetCumulativeArmorBonus(prestige);
                 if (armorBonus > 0)
