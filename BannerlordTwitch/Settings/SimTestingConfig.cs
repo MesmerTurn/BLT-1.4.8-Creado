@@ -22,11 +22,11 @@ namespace BannerlordTwitch
         [PropertyOrder(4), UsedImplicitly]
         public int IntervalMaxMS { get; set; }
         [PropertyOrder(5),
-         Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor)),
+         Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor)),
          UsedImplicitly]
         public ObservableCollection<SimTestingItem> Init { get; set; } = new();
         [PropertyOrder(6),
-         Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor)),
+         Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor)),
          UsedImplicitly]
         public ObservableCollection<SimTestingItem> Use { get; set; } = new();
         #endregion

@@ -17,8 +17,8 @@ namespace BLTAdoptAHero.Powers
     {
         [LocDisplayName("{=WLtUn4t7}Requirements"),
          LocDescription("{=sl5ZoJdv}Optional unlock criteria"),
-         Editor(typeof(DerivedClassCollectionEditor<IAchievementRequirement>),
-             typeof(DerivedClassCollectionEditor<IAchievementRequirement>)),
+         Editor(typeof(XceedDerivedClassCollectionEditor<IAchievementRequirement>),
+             typeof(XceedDerivedClassCollectionEditor<IAchievementRequirement>)),
          PropertyOrder(1), UsedImplicitly]
         public ObservableCollection<IAchievementRequirement> Requirements { get; set; } = new();
 

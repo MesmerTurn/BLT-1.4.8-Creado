@@ -112,7 +112,7 @@ namespace BLTAdoptAHero
         [LocDisplayName("Unified Weapon Pool"),
          LocCategory("Equipment", "{=i7ZDVTaw}Equipment"),
          LocDescription("Cultural Unified mode only: the weapon types, one of which is randomly chosen for ALL fighters each round. Each fighter receives that type from their own culture at the Loadout Tier."),
-         Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor)), PropertyOrder(9), UsedImplicitly, Document]
+         Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor)), PropertyOrder(9), UsedImplicitly, Document]
         public List<EquipmentType> UnifiedWeaponPool { get; set; } = new List<EquipmentType>
         {
             EquipmentType.OneHandedSword, EquipmentType.TwoHandedAxe, EquipmentType.OneHandedMace
@@ -123,7 +123,7 @@ namespace BLTAdoptAHero
         [LocDisplayName("{=UCAbZYqU}Previous Winner Debuffs"),
          LocCategory("Balancing", "{=Zwh9GYUE}Balancing"),
          LocDescription("{=FrloGGew}Applies skill debuffers to previous tournament winners"),
-         Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor)), PropertyOrder(1), UsedImplicitly, Document]
+         Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor)), PropertyOrder(1), UsedImplicitly, Document]
         public ObservableCollection<SkillDebuffDef> PreviousWinnerDebuffs { get; set; } = new() { new() };
         #endregion
 

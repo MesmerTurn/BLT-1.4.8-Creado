@@ -44,7 +44,7 @@ namespace BLTAdoptAHero
 
             [LocDisplayName("Starting Skills"),
              LocDescription("Starting skills, if empty defaults are kept"),
-             Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor)),
+             Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor)),
              PropertyOrder(3)]
             public ObservableCollection<SkillRangeDef> StartingSkills { get; set; } = new();
 

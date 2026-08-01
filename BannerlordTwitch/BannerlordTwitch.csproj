@@ -669,6 +669,7 @@
     </Compile>
     <Compile Include="UI\DefaultCollectionEditor.cs" />
     <Compile Include="UI\DerivedClassCollectionEditor.cs" />
+    <Compile Include="UI\XceedCollectionEditors.cs" />
     <Compile Include="UI\ExpandAttribute.cs" />
     <Compile Include="UI\ParticleEffectItemSource.cs" />
     <Compile Include="UI\RangeFloatControl.xaml.cs">

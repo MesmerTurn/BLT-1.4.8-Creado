@@ -29,13 +29,13 @@ namespace BLTAdoptAHero
         #region User Editable
         [LocDisplayName("{=462kHfn2}Class Definitions"),
          LocDescription("{=NFjlVt57}Defined classes"),
-         Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor)),
+         Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor)),
          PropertyOrder(1), UsedImplicitly]
         public ObservableCollection<HeroClassDef> ClassDefs { get; set; } = new();
 
         [LocDisplayName("{=Q0yTbTCT}Class Level Requirements"),
          LocDescription("{=y8LLccGK}Requirements for class levels"),
-         Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor)),
+         Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor)),
          PropertyOrder(2), UsedImplicitly]
         public ObservableCollection<ClassLevelRequirementsDef> ClassLevelRequirements { get; set; } = new();
         #endregion
@@ -129,8 +129,8 @@ namespace BLTAdoptAHero
         [LocDisplayName("{=aMGoiH53}Requirements"),
          LocDescription("{=G95DA4OM}Requirements for this class level"),
          PropertyOrder(3), UsedImplicitly,
-         Editor(typeof(DerivedClassCollectionEditor<IAchievementRequirement>),
-             typeof(DerivedClassCollectionEditor<IAchievementRequirement>))]
+         Editor(typeof(XceedDerivedClassCollectionEditor<IAchievementRequirement>),
+             typeof(XceedDerivedClassCollectionEditor<IAchievementRequirement>))]
         public ObservableCollection<IAchievementRequirement> Requirements { get; set; } = new();
         #endregion
 

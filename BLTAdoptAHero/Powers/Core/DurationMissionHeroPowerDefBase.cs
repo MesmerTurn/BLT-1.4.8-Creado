@@ -36,7 +36,7 @@ namespace BLTAdoptAHero.Powers
         [LocDisplayName("{=VS9ITIST}Pfx"),
          LocCategory("Power Config", "{=75UOuDM}Power Config"),
          LocDescription("{=xmz0TzN7}Effects to apply to the agent while the power is active"),
-         Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor)),
+         Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor)),
          PropertyOrder(1), UsedImplicitly]
         public ObservableCollection<ParticleEffectDef> Pfx { get; set; } = new();
         #endregion

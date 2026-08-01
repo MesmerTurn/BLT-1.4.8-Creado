@@ -41,7 +41,7 @@ namespace BLTAdoptAHero.Powers
 
         [LocDisplayName("{=acLMixuK}Powers"),
          LocDescription("{=6aKmeGgU}The various effects in the power. These can also have customized unlock requirements, so you can have classes that get stronger (or weaker!) over time (or by any other measure)."),
-         Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor)),
+         Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor)),
          PropertyOrder(2), UsedImplicitly]
         public ObservableCollection<ActivePowerGroupItem> Powers { get; set; } = new();
 

@@ -30,13 +30,13 @@ namespace BannerlordTwitch
 
         [LocDisplayName("{=RdCw0xo9}Properties"),
          LocDescription("{=ZKN8fZsA}Properties to change, and how much by"),
-         Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor)),
+         Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor)),
          PropertyOrder(3), UsedImplicitly]
         public ObservableCollection<PropertyModifierDef> Properties { get; set; } = new();
 
         [LocDisplayName("{=iPI9zoqR}Skills"),
          LocDescription("{=PanMmDx9}Skills to change, and how much by (these aren't compatible with Apply To Mount)"),
-         Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor)),
+         Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor)),
          PropertyOrder(3), UsedImplicitly]
         public ObservableCollection<SkillModifierDef> Skills { get; set; } = new();
 

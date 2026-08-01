@@ -120,13 +120,13 @@ namespace BLTBuffet
 
             [LocDisplayName("{=j7t8cjxA}Particle Effects"),
              LocDescription("{=YiUto6gZ}Particle effects to apply"),
-             Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor)),
+             Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor)),
              PropertyOrder(5), UsedImplicitly]
             public ObservableCollection<ParticleEffectDef> ParticleEffects { get; set; } = new();
 
             [LocDisplayName("{=CN0a7XhW}Properties"),
              LocDescription("{=JrmttiBW}Properties to change, and how much by"),
-             Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor)),
+             Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor)),
              PropertyOrder(6), UsedImplicitly]
             public ObservableCollection<PropertyDef> Properties { get; set; } = new();
 

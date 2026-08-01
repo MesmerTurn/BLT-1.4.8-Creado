@@ -410,7 +410,7 @@ namespace BLTAdoptAHero
          LocCategory("Upgrades", "{=BLT_Upgrades}Upgrades"),
          LocDescription("{=BLT_FiefUpgradesDesc}List of available fief (settlement) upgrades"),
          PropertyOrder(1), UsedImplicitly,
-         Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor))]
+         Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor))]
         public ObservableCollection<FiefUpgrade> FiefUpgrades { get; set; } = new()
         {
             new FiefUpgrade
@@ -459,7 +459,7 @@ namespace BLTAdoptAHero
          LocCategory("Upgrades", "{=BLT_Upgrades}Upgrades"),
          LocDescription("{=BLT_ClanUpgradesDesc}List of available clan-wide upgrades"),
          PropertyOrder(2), UsedImplicitly,
-         Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor))]
+         Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor))]
         public ObservableCollection<ClanUpgrade> ClanUpgrades { get; set; } = new()
         {
             new ClanUpgrade
@@ -493,7 +493,7 @@ namespace BLTAdoptAHero
          LocCategory("Upgrades", "{=BLT_Upgrades}Upgrades"),
          LocDescription("{=BLT_KingdomUpgradesDesc}List of available kingdom-wide upgrades"),
          PropertyOrder(3), UsedImplicitly,
-         Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor))]
+         Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor))]
         public ObservableCollection<KingdomUpgrade> KingdomUpgrades { get; set; } = new()
         {
             new KingdomUpgrade
@@ -713,7 +713,7 @@ namespace BLTAdoptAHero
         [LocDisplayName("{=3DZYc6hN}Kill Streaks"),
          LocCategory("Kill Streak Rewards", "{=lnz7d1BI}Kill Streak Rewards"),
          LocDescription("{=3DZYc6hN}Kill Streaks"),
-         Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor)),
+         Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor)),
          PropertyOrder(1), UsedImplicitly]
         public ObservableCollection<KillStreakDef> KillStreaks { get; set; } = new();
 
@@ -740,7 +740,7 @@ namespace BLTAdoptAHero
         [LocDisplayName("{=zTLei6dQ}Achievements"),
          LocCategory("Achievements", "{=EPr2clqT}Achievements"),
          LocDescription("{=zTLei6dQ}Achievements"),
-         Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor)),
+         Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor)),
          PropertyOrder(1), UsedImplicitly]
         public ObservableCollection<AchievementDef> Achievements { get; set; } = new();
         #endregion
@@ -749,7 +749,7 @@ namespace BLTAdoptAHero
         [LocDisplayName("{=HkD6326j}Shouts"),
          LocCategory("Shouts", "{=UhUpH8C8}Shouts"),
          LocDescription("{=ufqtH5QV}Custom shouts"),
-         Editor(typeof(DefaultCollectionEditor), typeof(DefaultCollectionEditor)),
+         Editor(typeof(XceedCollectionEditor), typeof(XceedCollectionEditor)),
          PropertyOrder(1), UsedImplicitly]
         public ObservableCollection<Shout> Shouts { get; set; } = new();
 

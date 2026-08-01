@@ -26,8 +26,8 @@ namespace BLTAdoptAHero
         #region User Editable
         [LocDisplayName("{=9vUtdRu2}Power Definitions"),
          LocDescription("{=ymGZUjoU}Defined powers"),
-         Editor(typeof(DerivedClassCollectionEditor<HeroPowerDefBase>),
-             typeof(DerivedClassCollectionEditor<HeroPowerDefBase>)),
+         Editor(typeof(XceedDerivedClassCollectionEditor<HeroPowerDefBase>),
+             typeof(XceedDerivedClassCollectionEditor<HeroPowerDefBase>)),
          UsedImplicitly]
         public ObservableCollection<HeroPowerDefBase> PowerDefs { get; set; } = new();
 

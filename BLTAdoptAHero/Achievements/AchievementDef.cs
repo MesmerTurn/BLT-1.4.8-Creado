@@ -39,8 +39,8 @@ namespace BLTAdoptAHero.Achievements
 
         [LocDisplayName("{=TfwiBMGr}Requirements"), LocCategory("Requirements", "{=TFbiD0CZ}Requirements"),
          PropertyOrder(1), UsedImplicitly,
-         Editor(typeof(DerivedClassCollectionEditor<IAchievementRequirement>),
-             typeof(DerivedClassCollectionEditor<IAchievementRequirement>))]
+         Editor(typeof(XceedDerivedClassCollectionEditor<IAchievementRequirement>),
+             typeof(XceedDerivedClassCollectionEditor<IAchievementRequirement>))]
         public ObservableCollection<IAchievementRequirement> Requirements { get; set; } = new();
 
         [LocDisplayName("{=NitYwoHr}Gold Gain"), LocCategory("Reward", "{=sHWjkhId}Reward"),
