@@ -9,6 +9,7 @@ using BannerlordTwitch.Localization;
 using BannerlordTwitch.Util;
 using BLTAdoptAHero;
 using BLTAdoptAHero.Annotations;
+using BLTAdoptAHero.Actions.Util;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.Actions;
 using TaleWorlds.CampaignSystem.CampaignBehaviors;
@@ -501,8 +502,8 @@ namespace BLTAdoptAHero.Actions
             if (h.HeroState == Hero.CharacterStates.Fugitive) { onFailure("Your hero is fugitive"); return; }
             if (party != null) { onFailure("You already have a party"); return; }
             if (h.IsPrisoner) { onFailure("You are prisoner"); return; }
-            if (!h.IsClanLeader && h.Clan.WarPartyComponents.Count >= h.Clan.CommanderLimit)
-            { onFailure($"Clan party limit: {h.Clan.CommanderLimit}"); return; }
+            if (!h.IsClanLeader && h.Clan.WarPartyComponents.Count >= h.Clan.WarPartyLimitCompat())
+            { onFailure($"Clan party limit: {h.Clan.WarPartyLimitCompat()}"); return; }
 
             if (h.GovernorOf != null) ChangeGovernorAction.RemoveGovernorOfIfExists(h.GovernorOf);
 
@@ -1458,7 +1459,7 @@ namespace BLTAdoptAHero.Actions
                 leaderParty = candidates.GetRandomElement();
 
             var vassalClans = VassalBehavior.Current?.GetVassalClans(h.Clan) ?? new List<Clan>();
-            var modelParties = Campaign.Current.Models.ArmyManagementCalculationModel.GetMobilePartiesToCallToArmy(leaderParty);
+            var modelParties = Campaign.Current.GetPartiesToCallToArmyCompat(leaderParty);
             var members = candidates
                 .Where(p => p != leaderParty)
                 .Concat(modelParties.Where(p => p != leaderParty && p != null))
@@ -2150,8 +2151,7 @@ namespace BLTAdoptAHero.Actions
                             && p != party && p.Army == null && p.AttachedTo == null
                             && p.LeaderHero != null && p.MapEvent == null && !p.IsDisbanding)
                         .ToList();
-                    var modelParties = Campaign.Current.Models.ArmyManagementCalculationModel
-                        .GetMobilePartiesToCallToArmy(party)
+                    var modelParties = Campaign.Current.GetPartiesToCallToArmyCompat(party)
                         .Where(p => p != null);
                     var ldrPos = party.GetPosition2D;
                     var sorted = vassalParties.Concat(modelParties).Distinct()

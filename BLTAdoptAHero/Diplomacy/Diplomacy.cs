@@ -17,6 +17,7 @@ using TaleWorlds.MountAndBlade;
 using TaleWorlds.Localization;
 using Xceed.Wpf.Toolkit.PropertyGrid.Attributes;
 using BLTAdoptAHero.Actions;
+using BLTAdoptAHero.Actions.Util;
 using System.Windows.Media.Animation;
 using System.Windows;
 
@@ -2550,7 +2551,7 @@ namespace BLTAdoptAHero
 
             // Check for existing trade agreement
             TradeAgreementsCampaignBehavior tradeBehavior = Campaign.Current.GetCampaignBehavior<TradeAgreementsCampaignBehavior>();
-            if (tradeBehavior.HasTradeAgreement(kingdom, target))
+            if (tradeBehavior.HasTradeAgreementCompat(kingdom, target))
             {
                 onFailure($"Already have trade agreement with {target.Name}");
                 return;
