@@ -31,7 +31,7 @@ namespace BannerlordTwitch
         [DllImport("user32.dll")]
         private static extern int SetWindowText(IntPtr hWnd, string text);
 
-        private static readonly string[] SupportedVersions = { "v1.3.15", "v1.4.5", "v1.4.6" };
+        private static readonly string[] SupportedVersions = { "v1.3.15", "v1.4.5", "v1.4.6", "v1.4.7" };
 
         static BLTModule()
         {
