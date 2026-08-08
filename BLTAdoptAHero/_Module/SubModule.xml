@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Module>
 	<Name value = "BLTAdoptAHero"/>
 	<Id value = "BLTAdoptAHero"/>
@@ -51,12 +51,6 @@
 			<Name value="MakeBltGreatAgain_ClanGold"/>
 			<DLLName value="MakeBltGreatAgain.dll"/>
 			<SubModuleClassType value="MakeBltGreatAgain.BLTClanGoldModule"/>
-			<Tags/>
-		</SubModule>
-		<SubModule>
-			<Name value="MakeBltGreatAgain_Grail"/>
-			<DLLName value="MakeBltGreatAgain.dll"/>
-			<SubModuleClassType value="MakeBltGreatAgain.BLTGrailModule"/>
 			<Tags/>
 		</SubModule>
 		<SubModule>
