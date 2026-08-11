@@ -210,6 +210,51 @@ a:active {
     text-decoration: underline;
 }
 
+.class-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1em;
+    align-items: start;
+}
+
+@media (max-width: 700px) {
+    .class-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.class-details {
+    border: 1px solid #6b46c1;
+    border-radius: 6px;
+    background: rgba(107, 70, 193, 0.08);
+    padding: 0.6em 0.8em;
+}
+
+.class-details > summary {
+    list-style: none;
+}
+
+.class-details > summary::-webkit-details-marker {
+    display: none;
+}
+
+.class-details > summary h2 {
+    display: inline;
+    margin: 0;
+}
+
+.class-details > summary::before {
+    content: "\25B8";
+    display: inline-block;
+    margin-right: 0.4em;
+    color: #d4af37;
+    transition: transform 0.15s ease;
+}
+
+.class-details[open] > summary::before {
+    transform: rotate(90deg);
+}
+
 .perk-constellation {
     position: relative;
     min-height: 140px;

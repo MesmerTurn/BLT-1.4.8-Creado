@@ -96,16 +96,18 @@ namespace BLTAdoptAHero
             generator.Div("class-config", () =>
             {
                 generator.H1("{=E0CBnj57}Classes".Translate());
-                // foreach (var cl in ClassDefs)
-                // {
-                //     generator.LinkToAnchor(cl.Name, () => generator.H2(cl.Name));
-                // }
-                foreach (var cl in ValidClasses)
+                generator.Div("class-grid", () =>
                 {
-                    generator.MakeAnchor(cl.Name.ToString(), () => generator.H2(cl.Name.ToString()));
-                    cl.GenerateDocumentation(generator);
-                    generator.Br();
-                }
+                    foreach (var cl in ValidClasses)
+                    {
+                        generator.MakeAnchor(cl.Name.ToString(), () => { });
+                        generator.Details("class-details", () =>
+                        {
+                            generator.Summary(() => generator.H2(cl.Name.ToString()));
+                            cl.GenerateDocumentation(generator);
+                        });
+                    }
+                });
             });
         }
         #endregion
