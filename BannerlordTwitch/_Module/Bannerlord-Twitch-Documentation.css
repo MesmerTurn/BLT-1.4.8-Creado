@@ -210,6 +210,13 @@ a:active {
     text-decoration: underline;
 }
 
+.perk-constellation {
+    position: relative;
+    min-height: 140px;
+    margin: 1.5em 0 1em 20px;
+    overflow: visible;
+}
+
 .example {
     background: rgba(13, 6, 32, 0.75);
     border: 1px solid #6b46c1;

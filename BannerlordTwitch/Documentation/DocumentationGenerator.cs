@@ -612,7 +612,7 @@ namespace BannerlordTwitch
                         coords[ordered[i].Key] = (40f + i * 60f, 40f + (i % 2 == 0 ? 0f : 30f));
                     }
 
-                    Div(() =>
+                    Div("perk-constellation", () =>
                     {
                         foreach (var p in ordered)
                         {
