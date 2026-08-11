@@ -28,6 +28,57 @@ namespace BannerlordTwitch
         private static readonly string CSSFileName = "Bannerlord-Twitch-Documentation.css";
         private static string CSSFullPath => Path.Combine(Path.GetDirectoryName(typeof(DocumentationGenerator).Assembly.Location) ?? ".", "..", "..", CSSFileName);
 
+        // Moves the page's existing top-level sections (matched by their existing CSS
+        // classes, unchanged) into 4 tab panels and wires up the tab buttons.
+        // .commands/.rewards/.class-config/.perks-config -> Hero
+        // .upgrade-system-wrapper -> Clans and Kingdoms
+        // .common-config -> General Settings
+        // .campaign-map-wrapper -> Campaign Map
+        private const string TabScript = @"
+<script>
+(function () {
+    var groups = {
+        'tab-hero': ['.commands', '.rewards', '.class-config', '.perks-config'],
+        'tab-clans': ['.upgrade-system-wrapper'],
+        'tab-settings': ['.common-config'],
+        'tab-map': ['.campaign-map-wrapper']
+    };
+    var contentEl = document.querySelector('.content');
+    if (!contentEl) return;
+    var toc = contentEl.querySelector('.toc-container');
+    var anchor = toc || contentEl.querySelector('.tab-bar');
+    if (!anchor) return;
+
+    var panels = {};
+    Object.keys(groups).forEach(function (tabId) {
+        var panel = document.createElement('div');
+        panel.className = 'tab-panel';
+        panel.id = tabId;
+        panels[tabId] = panel;
+        anchor.parentNode.insertBefore(panel, anchor.nextSibling);
+    });
+
+    Object.keys(groups).forEach(function (tabId) {
+        groups[tabId].forEach(function (sel) {
+            var el = contentEl.querySelector(sel);
+            if (el) panels[tabId].appendChild(el);
+        });
+    });
+
+    panels['tab-hero'].classList.add('active');
+
+    var buttons = contentEl.querySelectorAll('.tab-button');
+    buttons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            buttons.forEach(function (b) { b.classList.remove('active'); });
+            Object.keys(panels).forEach(function (id) { panels[id].classList.remove('active'); });
+            btn.classList.add('active');
+            panels[btn.getAttribute('data-tab')].classList.add('active');
+        });
+    });
+})();
+</script>";
+
         public async Task Document(IDocumentable documentable)
         {
             // Make sure previous image writes are all complete or aborted
@@ -59,6 +110,23 @@ namespace BannerlordTwitch
                     content.InsertRange(0, toc);
                 }
 
+                // Top-level nav: Hero / Clans and Kingdoms / General Settings / Campaign Map.
+                // Sits between the intro paragraph and the Table of Contents. Groups the
+                // page's existing top-level sections (identified by their existing CSS
+                // classes - no change to how/when those sections are generated) into 4
+                // panels via a small script at the end of the page, since the sections are
+                // written to `content` sequentially and flat, not as a tree Claude can
+                // re-parent from C# alone.
+                content.InsertRange(0, new[]
+                {
+                    "<div class=\"tab-bar\">",
+                    "<button class=\"tab-button active\" data-tab=\"tab-hero\" type=\"button\">Hero</button>",
+                    "<button class=\"tab-button\" data-tab=\"tab-clans\" type=\"button\">Clans and Kingdoms</button>",
+                    "<button class=\"tab-button\" data-tab=\"tab-settings\" type=\"button\">General Settings</button>",
+                    "<button class=\"tab-button\" data-tab=\"tab-map\" type=\"button\">Campaign Map</button>",
+                    "</div>"
+                });
+
                 content.InsertRange(0, new[]
                 {
                     "<!DOCTYPE html><html>",
@@ -72,6 +140,7 @@ namespace BannerlordTwitch
                     $"<p>{introduction}</p>"
                 });
 
+                content.Add(TabScript);
                 content.Add("</div></html></body>");
 
                 try

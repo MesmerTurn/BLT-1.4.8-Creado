@@ -882,9 +882,14 @@ namespace BLTAdoptAHero
                     });
                 }
             });
-            new UpgradeSystemDocumentation().GenerateDocumentation(generator);
 
-            
+            generator.Div("upgrade-system-wrapper", () =>
+            {
+                new UpgradeSystemDocumentation().GenerateDocumentation(generator);
+            });
+
+            generator.Div("campaign-map-wrapper", () =>
+            {
             var kingdoms = MapHub.CurrentMapData?.Kingdoms;
             if (kingdoms == null || kingdoms.Count == 0)
                 return;
@@ -991,7 +996,8 @@ namespace BLTAdoptAHero
 
                 generator.P("</div>"); // close container
             });
-            
+            });
+
         }
         #endregion
 
