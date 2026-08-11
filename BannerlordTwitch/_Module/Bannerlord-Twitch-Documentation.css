@@ -1,66 +1,80 @@
-﻿/*table {*/
-/*    width: 90%;*/
-/*    margin-left: 5%;*/
-/*    margin-right: 5%;*/
-/*}*/
+/* ════════════════════════════════════════════════════════════════════
+   "Starry Realm" theme — dark navy/purple sky, gold heraldic text.
+   Approved via visual companion review, 2026-08-11
+   (see docs/superpowers/specs/2026-08-11-perk-system-design.md §4.2).
+   Replaces the old plain dark-grey/black-border theme in place — same
+   file, same generator, every selector below has a real rule (none
+   left to fall back to default black-on-dark text).
+   ════════════════════════════════════════════════════════════════════ */
+
+body {
+    background: radial-gradient(ellipse at top, #2a1a4a 0%, #0d0620 70%);
+    background-attachment: fixed;
+}
+
+.content {
+    max-width: 1000px;
+    margin: auto;
+    background: rgba(13, 6, 32, 0.55);
+    color: #f0e6ff;
+    padding: 20px;
+    border: 4px solid #6b46c1;
+    border-image: repeating-linear-gradient(45deg, #6b46c1, #6b46c1 4px, #d4af37 4px, #d4af37 8px) 4;
+}
+
+p {
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #f0e6ff;
+    margin-top: 0.3em;
+    margin-bottom: 0.3em;
+}
+
+h1, h2, h3 {
+    font-family: Georgia, 'Times New Roman', serif;
+    text-transform: capitalize;
+    color: #ffd700;
+    text-shadow: 0 0 8px #6b46c1;
+    margin-top: 1em;
+    margin-bottom: 0.3em;
+}
 
 table {
-    border: 2px solid black;
+    border: 1px solid #6b46c1;
+    border-radius: 6px;
     margin: 0.5em;
     width: 98%;
+    background: rgba(107, 70, 193, 0.10);
 }
 
 table, th, td {
-    /*border: 0px solid black;*/
     border-collapse: collapse;
-    font-family: verdana, sans-serif;
+    font-family: Georgia, 'Times New Roman', serif;
 }
 
 th, td {
     padding: 0.5em 0.5em;
     text-align: left;
+    color: #f0e6ff;
 }
-/*table td:nth-child(1) {*/
-/*    width: 10em;*/
-/*}*/
-/*table td:nth-child(2) {*/
-/*    width: 10%;*/
-/*}*/
-/*table td:nth-child(3) {*/
-/*    width: 15%;*/
-/*}*/
-/*table td:nth-child(4) {*/
-/*    width: 40%;*/
-/*}*/
-/*.aclist td:nth-child(1) {*/
-/*    width: 30%;*/
-/*}*/
-/*.aclist td:nth-child(2) {*/
-/*    width: 70%;*/
-/*}*/
-/*table th:nth-child(even) {*/
-/*    background-color: #2a2a2a;*/
-/*}*/
-/*table th:nth-child(odd) {*/
-/*    background-color: #181818;*/
-/*}*/
 
 table tr:nth-child(even) {
-    background-color: #262626;
+    background-color: rgba(107, 70, 193, 0.18);
 }
 
 table tr:nth-child(odd) {
-    background-color: #222;
+    background-color: rgba(107, 70, 193, 0.08);
 }
 
 table th {
-    background-color: #959595;
-    color: #282828;
-    border-right: 1px dashed black;
+    background-color: #2a1a4a;
+    color: #ffd700;
+    text-shadow: 0 0 4px #6b46c1;
+    border-right: 1px dashed #6b46c1;
+    border-bottom: 1px solid #6b46c1;
 }
 
 table td {
-    border-bottom: 1px solid black;
+    border-bottom: 1px solid rgba(107, 70, 193, 0.4);
 }
 
 .rewards td:nth-child(1),
@@ -70,7 +84,7 @@ table td {
 .tournament-config td:nth-child(1)
 {
     width: 12em;
-    color: #9cb5e3;
+    color: #d4af37;
     font-size: 100%;
     margin-right: 1em;
 }
@@ -78,7 +92,7 @@ table td {
 .hero-class td:nth-child(1)
 {
     width: 8em;
-    background: #282828;
+    background: rgba(107, 70, 193, 0.20);
 }
 
 .rewards td:nth-child(2),
@@ -99,7 +113,7 @@ table td {
 .common-config td:nth-child(3),
 .tournament-config td:nth-child(3)
 {
-    color: #9a9a9a;
+    color: #c9b8e8;
     font-size: 80%;
 }
 
@@ -113,30 +127,20 @@ table td {
 .equip-img {
     width: 150px;
     border-radius: 8px;
+    border: 1px solid #6b46c1;
+    box-shadow: 0 0 8px rgba(107, 70, 193, 0.6);
 }
 
 .power td:nth-child(1) {
     width: 6em;
     font-weight: normal;
-    color: #22863a;
-}
-
-p {
-    font-family: verdana, sans-serif;
-    margin-top: 0.3em;
-    margin-bottom: 0.3em;
-}
-
-h1, h2, h3 {
-    font-family: verdana, sans-serif;
-    text-transform: capitalize;
-    margin-top: 1em;
-    margin-bottom: 0.3em;
+    color: #ffd700;
 }
 
 .toc-container {
-    background: #171717 none repeat scroll 0 0;
-    border: 1px solid #aaa;
+    background: rgba(13, 6, 32, 0.75);
+    border: 1px solid #6b46c1;
+    border-radius: 6px;
     display: table;
     margin-top: 1em;
     margin-bottom: 1em;
@@ -146,12 +150,14 @@ h1, h2, h3 {
 
 .toc-container a:link, .toc-container a:visited
 {
-    color: #6da4c4;
+    color: #d4af37;
     text-decoration: none;
 }
 
 .toc-title {
     font-weight: 700;
+    color: #ffd700;
+    text-shadow: 0 0 6px #6b46c1;
     margin-top: 0.1em;
     text-align: center;
 }
@@ -176,6 +182,7 @@ h1, h2, h3 {
 
 details summary {
     cursor: pointer;
+    color: #d4af37;
 }
 
 details summary > * {
@@ -183,17 +190,18 @@ details summary > * {
 }
 
 a:link {
-    color: #6da4c4;
+    color: #d4af37;
     text-decoration: none;
 }
 
 a:visited {
-    color: #886ae3;
+    color: #a888e0;
     text-decoration: none;
 }
 
 a:hover, .toc-container a:hover {
-    color: #e2e6f1;
+    color: #ffd700;
+    text-shadow: 0 0 6px #6b46c1;
     text-decoration: underline;
 }
 
@@ -201,13 +209,14 @@ a:active {
     color: #ffffff;
     text-decoration: underline;
 }
+
 .example {
-    background: #151b31;
-    border: 1px solid #ddd;
-    border-left: 5px solid #f36d33;
-    color: #dedede;
+    background: rgba(13, 6, 32, 0.75);
+    border: 1px solid #6b46c1;
+    border-left: 5px solid #d4af37;
+    color: #f0e6ff;
     page-break-inside: avoid;
-    font-family: monospace;
+    font-family: 'Courier New', monospace;
     font-size: 15px;
     line-height: 1.6;
     margin-left: 5%;
@@ -218,14 +227,4 @@ a:active {
     padding: 1em 1.5em;
     display: block;
     word-wrap: break-word;
-}
-.content {
-    max-width: 1000px;
-    margin: auto;
-    background: #1f1f1f;
-    color: #dcdedc;
-    padding: 10px;
-}
-body {
-    background: #282828;
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using TaleWorlds.Core;
 
 namespace BannerlordTwitch
@@ -63,5 +64,11 @@ namespace BannerlordTwitch
 
         IDocumentationGenerator MapLabel(float x, float y, string name, string type, string kingdomId, Func<string, string> getKingdomColor, Func<string, string> getBorderColor);
         IDocumentationGenerator MapSegment(float minX, float maxX, float minY, float MaxY);
+
+        IDocumentationGenerator PerkNode(float x, float y, int number, string name, bool unlocked);
+        IDocumentationGenerator PerkLine(float x1, float y1, float x2, float y2);
+        IDocumentationGenerator PerksSection(
+            IEnumerable<(string BranchName, IEnumerable<(string Key, string DisplayName, float BonusPerRank, string RequiredPerkKey, string RequirementText)> Perks)> branches,
+            Func<string, int> getRank);
     }
 }

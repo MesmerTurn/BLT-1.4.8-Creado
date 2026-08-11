@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using BannerlordTwitch.Util;
 using HarmonyLib;
@@ -537,6 +538,116 @@ namespace BannerlordTwitch
                   $"transform:rotate({angle}deg);" +
                   "box-shadow:0 0 2px rgba(0,0,0,0.4);" +
                   "\"></div>");
+            });
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        //  PERKS — "Constellation" rendering (2026-08-11 perk system design)
+        //  Same absolutely-positioned-div approach as MapLabel/MapSegment above,
+        //  not real SVG - matching this file's own established pattern.
+        // ════════════════════════════════════════════════════════════════
+
+        public IDocumentationGenerator PerkNode(float x, float y, int number, string name, bool unlocked)
+        {
+            string glow = unlocked ? "0 0 8px #ffd700, 0 0 16px #6b46c1" : "none";
+            string color = unlocked ? "#ffd700" : "#8a7aa0";
+            string opacity = unlocked ? "1" : "0.5";
+            // Circled-digit unicode block starts at U+2460 (①) for 1, covers up to 20 (⑳).
+            string numberGlyph = (number >= 1 && number <= 20) ? char.ConvertFromUtf32(0x2460 + number - 1) : number.ToString();
+
+            return Div(() =>
+            {
+                P($"<div style=\"position:absolute; left:{x}px; top:{y}px;" +
+                  "transform:translate(-50%,-50%);" +
+                  $"width:14px; height:14px; border-radius:50%; background:{color};" +
+                  $"box-shadow:{glow}; opacity:{opacity};\"></div>");
+
+                P($"<div style=\"position:absolute; left:{x}px; top:{y - 18}px;" +
+                  "transform:translate(-50%,0); font-size:13px; font-family:Georgia,serif;" +
+                  $"color:{color}; text-shadow:0 0 4px #6b46c1; opacity:{opacity};\">" +
+                  $"{numberGlyph}</div>");
+
+                P($"<div style=\"position:absolute; left:{x}px; top:{y + 12}px;" +
+                  "transform:translate(-50%,0); font-size:10px; font-family:Georgia,serif;" +
+                  $"color:{color}; opacity:{opacity}; white-space:nowrap;\">{name}</div>");
+            });
+        }
+
+        public IDocumentationGenerator PerkLine(float x1, float y1, float x2, float y2)
+        {
+            float dx = x2 - x1;
+            float dy = y2 - y1;
+            float length = (float)Math.Sqrt(dx * dx + dy * dy);
+            float angle = (float)(Math.Atan2(dy, dx) * 180.0 / Math.PI);
+
+            return Div(() =>
+            {
+                P($"<div style=\"position:absolute; left:{x1}px; top:{y1}px;" +
+                  $"width:{length}px; height:1px; background:#d4af37; opacity:0.6;" +
+                  "transform-origin:0 50%;" +
+                  $"transform:rotate({angle}deg);\"></div>");
+            });
+        }
+
+        // Renders one branch's constellation + numbered legend table. Decoupled from any specific
+        // perk-addon type (MakeBltGreatAgain.dll is optional and this is core BannerlordTwitch.dll,
+        // which must not take a hard reference on an addon) - perks are passed as primitive tuples,
+        // the same way MapLabel/MapSegment take primitive floats/strings rather than domain
+        // objects. The caller (an addon, via reflection - see Settings.GenerateDocumentation)
+        // supplies the ordered perk list for one branch and a rank-lookup delegate.
+        public IDocumentationGenerator PerksSection(
+            IEnumerable<(string BranchName, IEnumerable<(string Key, string DisplayName, float BonusPerRank, string RequiredPerkKey, string RequirementText)> Perks)> branches,
+            Func<string, int> getRank)
+        {
+            return Div(() =>
+            {
+                H2("Perks");
+                foreach (var branch in branches)
+                {
+                    H3(branch.BranchName);
+                    var ordered = branch.Perks.ToList();
+                    var coords = new Dictionary<string, (float x, float y)>();
+                    for (int i = 0; i < ordered.Count; i++)
+                    {
+                        coords[ordered[i].Key] = (40f + i * 60f, 40f + (i % 2 == 0 ? 0f : 30f));
+                    }
+
+                    Div(() =>
+                    {
+                        foreach (var p in ordered)
+                        {
+                            if (!string.IsNullOrEmpty(p.RequiredPerkKey) && coords.TryGetValue(p.RequiredPerkKey, out var prev) && coords.TryGetValue(p.Key, out var cur))
+                            {
+                                PerkLine(prev.x, prev.y, cur.x, cur.y);
+                            }
+                        }
+                        int num = 1;
+                        foreach (var p in ordered)
+                        {
+                            var c = coords[p.Key];
+                            bool unlocked = getRank(p.Key) > 0;
+                            PerkNode(c.x, c.y, num, p.DisplayName, unlocked);
+                            num++;
+                        }
+                    });
+
+                    Table(() =>
+                    {
+                        TR(() => { TH("#"); TH("Perk"); TH("Per Rank"); TH("Requires"); });
+                        int legendNum = 1;
+                        foreach (var p in ordered)
+                        {
+                            TR(() =>
+                            {
+                                TD(legendNum.ToString());
+                                TD(p.DisplayName);
+                                TD($"+{p.BonusPerRank * 100:0.#}%");
+                                TD(string.IsNullOrEmpty(p.RequirementText) ? "-" : p.RequirementText);
+                            });
+                            legendNum++;
+                        }
+                    });
+                }
             });
         }
     }
