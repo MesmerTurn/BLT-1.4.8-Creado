@@ -59,6 +59,12 @@
 			<SubModuleClassType value="MakeBltGreatAgain.BLTAurasModule"/>
 			<Tags/>
 		</SubModule>
+		<SubModule>
+			<Name value="PeasantRebellionPerks"/>
+			<DLLName value="PeasantRebellionPerks.dll"/>
+			<SubModuleClassType value="PeasantRebellionPerks.PeasantRebellionPerksModule"/>
+			<Tags/>
+		</SubModule>
 	</SubModules>
 	<DependedModuleMetadatas>
 		<!-- order: [ "LoadBeforeThis", "LoadAfterThis" ] -->
