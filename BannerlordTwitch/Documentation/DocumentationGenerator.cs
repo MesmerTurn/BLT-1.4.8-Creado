@@ -296,12 +296,17 @@ namespace BannerlordTwitch
             // 10 second cap gave up long before they finished, silently dropping the rest (leaving
             // broken <img> links in the generated docs). Scale the wait with how many images are
             // actually still pending instead of a fixed short timeout, with a generous hard cap.
-            int maxWaitMs = Math.Max(10_000, pendingImages.Count * 500);
+            // 2026-08-12: was Max(10_000, count*500) - with a large class/item roster that cap
+            // could reach 30-50s+, and every render that genuinely stalls burns nearly the whole
+            // cap on every single doc generation. Tightened per-image budget and poll interval so
+            // a stalled render gives up sooner while a normal one (which exits early via
+            // pendingImages.IsEmpty, long before hitting the cap) is unaffected.
+            int maxWaitMs = Math.Max(4_000, pendingImages.Count * 150);
             int elapsedMs = 0;
             while (!pendingImages.IsEmpty && elapsedMs < maxWaitMs)
             {
-                await Task.Delay(100);
-                elapsedMs += 100;
+                await Task.Delay(50);
+                elapsedMs += 50;
             }
 
             if (!pendingImages.IsEmpty)
@@ -616,33 +621,61 @@ namespace BannerlordTwitch
         //  not real SVG - matching this file's own established pattern.
         // ════════════════════════════════════════════════════════════════
 
-        public IDocumentationGenerator PerkNode(float x, float y, int number, string name, bool unlocked)
+        // One distinct color per branch (cycled by branch index) so the constellation reads as
+        // several different star-groups fanning out, not one monochrome gold web. Locked nodes
+        // ignore this and stay muted gray regardless of branch - color = "you have this."
+        private static readonly string[] BranchColors =
         {
-            string glow = unlocked ? "0 0 8px #ffd700, 0 0 16px #6b46c1" : "none";
-            string color = unlocked ? "#ffd700" : "#8a7aa0";
+            "#ffd700", // gold
+            "#66e0ff", // cyan
+            "#ff6bcb", // pink
+            "#7cff6b", // green
+            "#ff9d42", // orange
+            "#a78bfa", // violet
+            "#ff5c5c", // red
+            "#5ca8ff", // blue
+            "#e0ff5c", // lime
+            "#ff8ccf", // rose
+            "#5cffe0", // teal
+            "#ffb85c", // amber
+        };
+
+        public static string PerkBranchColor(int branchIndex) => BranchColors[((branchIndex % BranchColors.Length) + BranchColors.Length) % BranchColors.Length];
+
+        public IDocumentationGenerator PerkNode(float x, float y, int number, string name, bool unlocked, string branchColor, bool isRoot = false)
+        {
+            string color = unlocked ? branchColor : "#8a7aa0";
+            string glow = unlocked ? $"0 0 8px {color}, 0 0 16px #6b46c1" : "none";
             string opacity = unlocked ? "1" : "0.5";
             // Circled-digit unicode block starts at U+2460 (①) for 1, covers up to 20 (⑳).
             string numberGlyph = (number >= 1 && number <= 20) ? char.ConvertFromUtf32(0x2460 + number - 1) : number.ToString();
+            // Root perks (branch entry point) render as a bigger "anchor star" - the rest are
+            // smaller satellites, same visual language real star maps use for a system's primary.
+            float size = isRoot ? 20f : 13f;
+            // Deterministic per-node stagger so the twinkle animation (see .perk-star CSS) doesn't
+            // pulse every star in lockstep - purely cosmetic, derived from position so it's stable
+            // across regenerations of the same catalog.
+            float delay = ((x * 13f + y * 7f) % 40f) / 10f;
 
             return Div(() =>
             {
-                P($"<div style=\"position:absolute; left:{x}px; top:{y}px;" +
+                P($"<div class=\"perk-star{(isRoot ? " perk-star-root" : "")}\" style=\"position:absolute; left:{x}px; top:{y}px;" +
                   "transform:translate(-50%,-50%);" +
-                  $"width:14px; height:14px; border-radius:50%; background:{color};" +
-                  $"box-shadow:{glow}; opacity:{opacity};\"></div>");
+                  $"width:{size}px; height:{size}px; border-radius:50%; background:{color};" +
+                  $"box-shadow:{glow}; opacity:{opacity}; animation-delay:{delay}s;\"></div>");
 
-                P($"<div style=\"position:absolute; left:{x}px; top:{y - 18}px;" +
+                P($"<div style=\"position:absolute; left:{x}px; top:{y - (size / 2f) - 12f}px;" +
                   "transform:translate(-50%,0); font-size:13px; font-family:Georgia,serif;" +
                   $"color:{color}; text-shadow:0 0 4px #6b46c1; opacity:{opacity};\">" +
                   $"{numberGlyph}</div>");
 
-                P($"<div style=\"position:absolute; left:{x}px; top:{y + 12}px;" +
+                P($"<div style=\"position:absolute; left:{x}px; top:{y + (size / 2f) + 6f}px;" +
                   "transform:translate(-50%,0); font-size:10px; font-family:Georgia,serif;" +
                   $"color:{color}; opacity:{opacity}; white-space:nowrap;\">{name}</div>");
             });
         }
 
-        public IDocumentationGenerator PerkLine(float x1, float y1, float x2, float y2)
+        public IDocumentationGenerator PerkLine(float x1, float y1, float x2, float y2, string color = "#d4af37")
         {
             float dx = x2 - x1;
             float dy = y2 - y1;
@@ -652,7 +685,9 @@ namespace BannerlordTwitch
             return Div(() =>
             {
                 P($"<div style=\"position:absolute; left:{x1}px; top:{y1}px;" +
-                  $"width:{length}px; height:1px; background:#d4af37; opacity:0.6;" +
+                  $"width:{length}px; height:1px;" +
+                  $"background:linear-gradient(90deg, {color}, transparent);" +
+                  "opacity:0.75;" +
                   "transform-origin:0 50%;" +
                   $"transform:rotate({angle}deg);\"></div>");
             });
@@ -665,49 +700,141 @@ namespace BannerlordTwitch
         // objects. The caller (an addon, via reflection - see Settings.GenerateDocumentation)
         // supplies the ordered perk list for one branch and a rank-lookup delegate.
         public IDocumentationGenerator PerksSection(
-            IEnumerable<(string BranchName, IEnumerable<(string Key, string DisplayName, float BonusPerRank, string RequiredPerkKey, string RequirementText)> Perks)> branches,
+            IEnumerable<(string BranchName, IEnumerable<(string Key, string DisplayName, float BonusPerRank, IEnumerable<string> RequiredPerkKeys, string RequirementText)> Perks)> branches,
             Func<string, int> getRank)
         {
+            // Radial "starburst" layout: every branch is a spoke fanning out from a shared center
+            // point at its own angle (2*pi/branchCount apart), with rank 1 nearest the center and
+            // each further rank a step further out along that spoke. This replaces an earlier
+            // parallel-column layout (branch=column, rank=row) that, even with a horizontal sine
+            // wobble added on top, still read as a grid rather than a constellation - a rigid
+            // shared Y-per-row axis across every branch is what a grid *is*, no amount of per-row
+            // jitter escapes that. Radiating spokes at different angles is structurally different,
+            // not just a wobblier version of the same grid.
+            //
+            // RequiredPerkKeys (plural) lets a node point back at prerequisites in more than one
+            // branch - drawn as one line per requirement, each colored like its *source* branch,
+            // so a hybrid capstone visibly shows two different-colored lines converging into it
+            // instead of one. Normal (single-branch) perks just have a 1-entry list.
+            const float AngleJitterAmplitude = 0.22f;   // radians of extra wander per rank, deterministic
+            const float RadiusJitterAmplitude = 14f;    // px of extra wander per rank
+            const float BaseRadius = 100f;              // distance from center to rank-1 (root)
+            const float RadiusStep = 130f;              // distance between successive ranks along a spoke
+            const float LabelPad = 60f;                 // extra distance beyond the last rank for the branch label
+
+            var branchList = branches.ToList();
+            int branchCount = branchList.Count;
+            int maxRanks = branchCount > 0 ? branchList.Max(b => b.Perks.Count()) : 0;
+            float maxRadius = BaseRadius + Math.Max(0, maxRanks - 1) * RadiusStep + RadiusJitterAmplitude + LabelPad;
+            float canvasSize = maxRadius * 2f + 60f;
+            float centerX = canvasSize / 2f;
+            float centerY = canvasSize / 2f;
+
             return Div(() =>
             {
                 H2("Perks");
-                foreach (var branch in branches)
-                {
-                    H3(branch.BranchName);
-                    var ordered = branch.Perks.ToList();
-                    var coords = new Dictionary<string, (float x, float y)>();
-                    for (int i = 0; i < ordered.Count; i++)
-                    {
-                        coords[ordered[i].Key] = (40f + i * 60f, 40f + (i % 2 == 0 ? 0f : 30f));
-                    }
 
+                var coords = new Dictionary<string, (float x, float y)>();
+                var keyBranchIndex = new Dictionary<string, int>();
+                var branchAngle = new float[branchCount];
+                var branchAngleDeg = new float[branchCount];
+                var branchOuterRadius = new float[branchCount];
+                for (int col = 0; col < branchCount; col++)
+                {
+                    // Start straight up (-90deg) and go clockwise, evenly spaced per branch.
+                    float angleBase = (float)(-Math.PI / 2.0 + (2.0 * Math.PI * col / Math.Max(1, branchCount)));
+                    branchAngle[col] = angleBase;
+                    branchAngleDeg[col] = angleBase * 180f / (float)Math.PI;
+
+                    var ordered = branchList[col].Perks.ToList();
+                    for (int row = 0; row < ordered.Count; row++)
+                    {
+                        // Deterministic per-node wander in both angle and radius - same catalog
+                        // always lays out identically, but no two ranks sit on a perfectly straight
+                        // spoke or a shared ring, which is what actually breaks the "grid" look.
+                        float angleJitter = (float)(Math.Sin(row * 1.7 + col * 0.9) * AngleJitterAmplitude);
+                        float radiusJitter = (float)(Math.Cos(row * 1.3 + col * 1.1) * RadiusJitterAmplitude);
+                        float angle = angleBase + angleJitter;
+                        float radius = BaseRadius + row * RadiusStep + radiusJitter;
+                        branchOuterRadius[col] = radius;
+
+                        float x = centerX + radius * (float)Math.Cos(angle);
+                        float y = centerY + radius * (float)Math.Sin(angle);
+                        coords[ordered[row].Key] = (x, y);
+                        keyBranchIndex[ordered[row].Key] = col;
+                    }
+                }
+
+                Div("perk-scroll", () =>
+                {
                     Div("perk-constellation", () =>
                     {
-                        foreach (var p in ordered)
+                        // Spacer in normal flow so this position:relative container actually
+                        // reserves canvasSize x canvasSize - its real children below are all
+                        // position:absolute and (correctly) don't otherwise contribute to its size.
+                        P($"<div style=\"position:relative; width:{canvasSize}px; height:{canvasSize}px;\"></div>");
+
+                        // Branch labels sit just beyond that spoke's outermost star, in the same
+                        // direction the spoke points - like a constellation's name at its tip - and
+                        // are rotated to follow the spoke's own angle. Horizontal labels around a
+                        // shared outer ring collide with each other once there are more than a
+                        // handful of branches; a label that points the same way its spoke does only
+                        // has to avoid its immediate neighbors, not the whole ring.
+                        for (int col = 0; col < branchCount; col++)
                         {
-                            if (!string.IsNullOrEmpty(p.RequiredPerkKey) && coords.TryGetValue(p.RequiredPerkKey, out var prev) && coords.TryGetValue(p.Key, out var cur))
+                            float labelRadius = branchOuterRadius[col] + LabelPad;
+                            float lx = centerX + labelRadius * (float)Math.Cos(branchAngle[col]);
+                            float ly = centerY + labelRadius * (float)Math.Sin(branchAngle[col]);
+                            // Keep text upright: flip 180deg whenever the raw spoke angle would
+                            // otherwise render the label upside-down (roughly the bottom half of
+                            // the circle).
+                            float labelDeg = branchAngleDeg[col];
+                            if (labelDeg > 90f || labelDeg < -90f) labelDeg += 180f;
+                            string color = PerkBranchColor(col);
+                            P($"<div style=\"position:absolute; left:{lx}px; top:{ly}px;" +
+                              $"transform:translate(-50%,-50%) rotate({labelDeg}deg); font-size:12px; font-family:Georgia,serif; font-weight:bold;" +
+                              $"color:{color}; text-shadow:0 0 4px #6b46c1; opacity:1; white-space:nowrap; text-align:center;\">{branchList[col].BranchName}</div>");
+                        }
+
+                        foreach (var branch in branchList)
+                        {
+                            foreach (var p in branch.Perks)
                             {
-                                PerkLine(prev.x, prev.y, cur.x, cur.y);
+                                foreach (var reqKey in p.RequiredPerkKeys ?? Array.Empty<string>())
+                                {
+                                    if (string.IsNullOrEmpty(reqKey)) continue;
+                                    if (!coords.TryGetValue(reqKey, out var prev) || !coords.TryGetValue(p.Key, out var cur)) continue;
+                                    string lineColor = keyBranchIndex.TryGetValue(reqKey, out var srcBranch) ? PerkBranchColor(srcBranch) : "#d4af37";
+                                    PerkLine(prev.x, prev.y, cur.x, cur.y, lineColor);
+                                }
                             }
                         }
-                        int num = 1;
-                        foreach (var p in ordered)
+                        for (int col = 0; col < branchCount; col++)
                         {
-                            var c = coords[p.Key];
-                            bool unlocked = getRank(p.Key) > 0;
-                            PerkNode(c.x, c.y, num, p.DisplayName, unlocked);
-                            num++;
+                            string branchColor = PerkBranchColor(col);
+                            int num = 1;
+                            foreach (var p in branchList[col].Perks)
+                            {
+                                var c = coords[p.Key];
+                                bool unlocked = getRank(p.Key) > 0;
+                                PerkNode(c.x, c.y, num, p.DisplayName, unlocked, branchColor, isRoot: num == 1);
+                                num++;
+                            }
                         }
                     });
+                });
 
-                    Table(() =>
+                Table(() =>
+                {
+                    TR(() => { TH("Branch"); TH("#"); TH("Perk"); TH("Per Rank"); TH("Requires"); });
+                    foreach (var branch in branchList)
                     {
-                        TR(() => { TH("#"); TH("Perk"); TH("Per Rank"); TH("Requires"); });
                         int legendNum = 1;
-                        foreach (var p in ordered)
+                        foreach (var p in branch.Perks)
                         {
                             TR(() =>
                             {
+                                TD(branch.BranchName);
                                 TD(legendNum.ToString());
                                 TD(p.DisplayName);
                                 TD($"+{p.BonusPerRank * 100:0.#}%");
@@ -715,8 +842,8 @@ namespace BannerlordTwitch
                             });
                             legendNum++;
                         }
-                    });
-                }
+                    }
+                });
             });
         }
     }
