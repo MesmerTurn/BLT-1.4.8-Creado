@@ -638,11 +638,23 @@ namespace BannerlordTwitch
             "#ff8ccf", // rose
             "#5cffe0", // teal
             "#ffb85c", // amber
+            "#c084fc", // fuchsia
+            "#4ade80", // emerald
+            "#fb7185", // coral
+            "#38bdf8", // sky
+            "#facc15", // yellow
+            "#f472b6", // magenta
         };
 
         public static string PerkBranchColor(int branchIndex) => BranchColors[((branchIndex % BranchColors.Length) + BranchColors.Length) % BranchColors.Length];
 
-        public IDocumentationGenerator PerkNode(float x, float y, int number, string name, bool unlocked, string branchColor, bool isRoot = false)
+        // angleRad is this node's own direction from the constellation's center (same angle its
+        // spoke radiates along). The name label is placed further out along that same direction
+        // and rotated to match, exactly like the branch header treatment - critical near the
+        // center where many branches' root stars sit close together on a small ring: a label that
+        // fans outward along its own spoke only has to avoid its immediate neighbors, not every
+        // other root crammed onto that ring, which is what made the un-rotated version illegible.
+        public IDocumentationGenerator PerkNode(float x, float y, float angleRad, int number, string name, bool unlocked, string branchColor, bool isRoot = false)
         {
             string color = unlocked ? branchColor : "#8a7aa0";
             string glow = unlocked ? $"0 0 8px {color}, 0 0 16px #6b46c1" : "none";
@@ -657,6 +669,12 @@ namespace BannerlordTwitch
             // across regenerations of the same catalog.
             float delay = ((x * 13f + y * 7f) % 40f) / 10f;
 
+            float labelDeg = angleRad * 180f / (float)Math.PI;
+            if (labelDeg > 90f || labelDeg < -90f) labelDeg += 180f; // keep text upright
+            float labelOffset = (size / 2f) + 16f;
+            float lx = x + labelOffset * (float)Math.Cos(angleRad);
+            float ly = y + labelOffset * (float)Math.Sin(angleRad);
+
             return Div(() =>
             {
                 P($"<div class=\"perk-star{(isRoot ? " perk-star-root" : "")}\" style=\"position:absolute; left:{x}px; top:{y}px;" +
@@ -669,8 +687,8 @@ namespace BannerlordTwitch
                   $"color:{color}; text-shadow:0 0 4px #6b46c1; opacity:{opacity};\">" +
                   $"{numberGlyph}</div>");
 
-                P($"<div style=\"position:absolute; left:{x}px; top:{y + (size / 2f) + 6f}px;" +
-                  "transform:translate(-50%,0); font-size:10px; font-family:Georgia,serif;" +
+                P($"<div style=\"position:absolute; left:{lx}px; top:{ly}px;" +
+                  $"transform:translate(-50%,-50%) rotate({labelDeg}deg); font-size:10px; font-family:Georgia,serif;" +
                   $"color:{color}; opacity:{opacity}; white-space:nowrap;\">{name}</div>");
             });
         }
@@ -726,7 +744,12 @@ namespace BannerlordTwitch
             int branchCount = branchList.Count;
             int maxRanks = branchCount > 0 ? branchList.Max(b => b.Perks.Count()) : 0;
             float maxRadius = BaseRadius + Math.Max(0, maxRanks - 1) * RadiusStep + RadiusJitterAmplitude + LabelPad;
-            float canvasSize = maxRadius * 2f + 60f;
+            // Generous fixed margin beyond maxRadius on every side - branch labels are rotated
+            // text that, for spokes pointing roughly left/right, render close to horizontal and
+            // can extend 150px+ past their anchor point. Without this margin those labels get cut
+            // off by perk-scroll's overflow-x:auto (which can only reveal overflow to the right of
+            // the scrollable area, never to the left of x=0).
+            float canvasSize = maxRadius * 2f + 320f;
             float centerX = canvasSize / 2f;
             float centerY = canvasSize / 2f;
 
@@ -735,6 +758,7 @@ namespace BannerlordTwitch
                 H2("Perks");
 
                 var coords = new Dictionary<string, (float x, float y)>();
+                var nodeAngle = new Dictionary<string, float>();
                 var keyBranchIndex = new Dictionary<string, int>();
                 var branchAngle = new float[branchCount];
                 var branchAngleDeg = new float[branchCount];
@@ -761,6 +785,7 @@ namespace BannerlordTwitch
                         float x = centerX + radius * (float)Math.Cos(angle);
                         float y = centerY + radius * (float)Math.Sin(angle);
                         coords[ordered[row].Key] = (x, y);
+                        nodeAngle[ordered[row].Key] = angle;
                         keyBranchIndex[ordered[row].Key] = col;
                     }
                 }
@@ -817,7 +842,8 @@ namespace BannerlordTwitch
                             {
                                 var c = coords[p.Key];
                                 bool unlocked = getRank(p.Key) > 0;
-                                PerkNode(c.x, c.y, num, p.DisplayName, unlocked, branchColor, isRoot: num == 1);
+                                float angle = nodeAngle.TryGetValue(p.Key, out var a) ? a : branchAngle[col];
+                                PerkNode(c.x, c.y, angle, num, p.DisplayName, unlocked, branchColor, isRoot: num == 1);
                                 num++;
                             }
                         }
