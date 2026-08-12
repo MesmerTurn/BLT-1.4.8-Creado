@@ -100,7 +100,7 @@ namespace BannerlordTwitch
         {
             // Wait for image writes first
             await WaitForPendingImagesAsync();
-            ReleaseItemTableauLayer();
+            await MainThreadSync.RunWaitAsync(ReleaseItemTableauLayer);
 
             await MainThreadSync.RunWaitAsync(() =>
             {
@@ -394,14 +394,24 @@ namespace BannerlordTwitch
             if (_itemTableauQueue.Count == 0) return;
             try
             {
+                // Every GauntletLayer/widget/ViewModel touch below MUST happen on the main thread
+                // - Gauntlet UI isn't thread-safe, and WaitForPendingImagesAsync (this method's
+                // caller) resumes on a thread-pool thread after each `await Task.Delay`, not the
+                // main thread. This project already has MainThreadSync for exactly this reason
+                // (see its own doc comment / usage in Settings.cs) - every mutation and every
+                // Texture read here goes through MainThreadSync.RunWaitAsync so it actually runs
+                // where the engine expects it to.
                 if (_itemTableauLayer == null)
                 {
-                    _itemTableauVM = new ItemTableauCaptureVM();
-                    _itemTableauLayer = new GauntletLayer("BLTDocItemTableauLayer", 200, false);
-                    var movieId = _itemTableauLayer.LoadMovie("BLTItemTableauCapture", _itemTableauVM);
-                    ScreenManager.TopScreen?.AddLayer(_itemTableauLayer);
-                    _itemTableauWidget = movieId?.Movie?.RootWidget?
-                        .FindChildrenWithType<ItemTableauWidget>(true)?.FirstOrDefault();
+                    await MainThreadSync.RunWaitAsync(() =>
+                    {
+                        _itemTableauVM = new ItemTableauCaptureVM();
+                        _itemTableauLayer = new GauntletLayer("BLTDocItemTableauLayer", 200, false);
+                        var movieId = _itemTableauLayer.LoadMovie("BLTItemTableauCapture", _itemTableauVM);
+                        ScreenManager.TopScreen?.AddLayer(_itemTableauLayer);
+                        _itemTableauWidget = movieId?.Movie?.RootWidget?
+                            .FindChildrenWithType<ItemTableauWidget>(true)?.FirstOrDefault();
+                    });
                 }
 
                 if (_itemTableauWidget == null)
@@ -415,8 +425,12 @@ namespace BannerlordTwitch
                 while (_itemTableauQueue.Count > 0)
                 {
                     var (stringId, name, localPath) = _itemTableauQueue.Dequeue();
-                    var previousTexture = _itemTableauWidget.Texture;
-                    _itemTableauVM.ItemStringId = stringId;
+                    TaleWorlds.TwoDimension.Texture previousTexture = null;
+                    await MainThreadSync.RunWaitAsync(() =>
+                    {
+                        previousTexture = _itemTableauWidget.Texture;
+                        _itemTableauVM.ItemStringId = stringId;
+                    });
 
                     // ItemTableauWidget.Texture is TaleWorlds.TwoDimension.Texture (a UI-layer
                     // wrapper), not the TaleWorlds.Engine.Texture TextureComplete expects (that's
@@ -431,12 +445,15 @@ namespace BannerlordTwitch
                     for (int i = 0; i < 80 && captured == null; i++)
                     {
                         await Task.Delay(50);
-                        var current = _itemTableauWidget.Texture;
-                        if (current != null && current != previousTexture
-                            && current.PlatformTexture is TaleWorlds.Engine.GauntletUI.EngineTexture engineTexture)
+                        await MainThreadSync.RunWaitAsync(() =>
                         {
-                            captured = engineTexture.Texture;
-                        }
+                            var current = _itemTableauWidget.Texture;
+                            if (current != null && current != previousTexture
+                                && current.PlatformTexture is TaleWorlds.Engine.GauntletUI.EngineTexture engineTexture)
+                            {
+                                captured = engineTexture.Texture;
+                            }
+                        });
                     }
 
                     if (captured != null)
