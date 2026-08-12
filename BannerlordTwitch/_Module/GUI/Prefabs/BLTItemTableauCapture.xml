@@ -1,0 +1,9 @@
+<Prefab>
+  <Window>
+    <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="256" SuggestedHeight="256">
+      <Children>
+        <ItemTableauWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" StringId="@ItemStringId"/>
+      </Children>
+    </Widget>
+  </Window>
+</Prefab>
