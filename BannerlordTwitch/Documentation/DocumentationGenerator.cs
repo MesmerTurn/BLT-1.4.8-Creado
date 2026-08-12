@@ -403,28 +403,21 @@ namespace BannerlordTwitch
                 // where the engine expects it to.
                 if (_itemTableauLayer == null)
                 {
-                    GauntletMovieIdentifier movieId = null;
                     await MainThreadSync.RunWaitAsync(() =>
                     {
                         _itemTableauVM = new ItemTableauCaptureVM();
                         _itemTableauLayer = new GauntletLayer("BLTDocItemTableauLayer", 200, false);
-                        movieId = _itemTableauLayer.LoadMovie("BLTItemTableauCapture", _itemTableauVM);
+                        var movieId = _itemTableauLayer.LoadMovie("BLTItemTableauCapture", _itemTableauVM);
                         ScreenManager.TopScreen?.AddLayer(_itemTableauLayer);
+                        // FindChildrenWithType<T> doesn't match the ItemTableauWidget here despite
+                        // it genuinely being that exact type (reflection-confirmed via
+                        // GetChild(0).GetType() during debugging, 2026-08-12) - it may only search
+                        // grandchildren-and-deeper rather than immediate children. The prefab's
+                        // structure is fixed and known (one Widget wrapping exactly one
+                        // ItemTableauWidget, per BLTItemTableauCapture.xml), so read it directly
+                        // instead of relying on that search.
+                        _itemTableauWidget = movieId?.Movie?.RootWidget?.GetChild(0) as ItemTableauWidget;
                     });
-
-                    // The widget tree isn't necessarily fully built the instant LoadMovie
-                    // returns - confirmed 2026-08-12: a one-shot lookup right after LoadMovie
-                    // logged "ItemTableauWidget not found" every time. Retry across a few frames
-                    // instead of assuming it's ready synchronously.
-                    for (int i = 0; i < 40 && _itemTableauWidget == null; i++)
-                    {
-                        await Task.Delay(50);
-                        await MainThreadSync.RunWaitAsync(() =>
-                        {
-                            _itemTableauWidget = movieId?.Movie?.RootWidget?
-                                .FindChildrenWithType<ItemTableauWidget>(true)?.FirstOrDefault();
-                        });
-                    }
                 }
 
                 if (_itemTableauWidget == null)
