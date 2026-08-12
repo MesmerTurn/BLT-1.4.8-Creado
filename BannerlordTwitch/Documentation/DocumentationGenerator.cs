@@ -648,47 +648,67 @@ namespace BannerlordTwitch
 
         public static string PerkBranchColor(int branchIndex) => BranchColors[((branchIndex % BranchColors.Length) + BranchColors.Length) % BranchColors.Length];
 
-        // angleRad is this node's own direction from the constellation's center (same angle its
-        // spoke radiates along). The name label is placed further out along that same direction
-        // and rotated to match, exactly like the branch header treatment - critical near the
-        // center where many branches' root stars sit close together on a small ring: a label that
-        // fans outward along its own spoke only has to avoid its immediate neighbors, not every
-        // other root crammed onto that ring, which is what made the un-rotated version illegible.
-        public IDocumentationGenerator PerkNode(float x, float y, float angleRad, int number, string name, bool unlocked, string branchColor, bool isRoot = false)
+        // A representative glyph per branch, matched by keyword against the branch name - this
+        // file (core BannerlordTwitch.dll) can't take a hard reference on any specific addon's
+        // branch list, so icons are guessed generically rather than looked up from a fixed table
+        // keyed by an addon-specific enum. Falls back to a plain star for anything unmatched.
+        public static string PerkBranchIcon(string branchName)
+        {
+            string n = (branchName ?? "").ToLowerInvariant();
+            if (n.Contains("capstone") || n.Contains("duelist") || n.Contains("juggernaut") || n.Contains("reaper") || n.Contains("marksman")) return "⚔"; // crossed swords
+            if (n.Contains("hp")) return "♥"; // heart
+            if (n.Contains("ignore armor")) return "†"; // dagger
+            if (n.Contains("cut through")) return "⛨"; // black cross on shield
+            if (n.Contains("damage")) return "⚔"; // crossed swords
+            if (n.Contains("evade")) return "↯"; // zigzag arrow
+            if (n.Contains("regen")) return "✚"; // heavy greek cross
+            if (n.Contains("berserk")) return "♨"; // hot springs (flame-ish glyph with broad font support)
+            if (n.Contains("shrug")) return "⛨"; // shield
+            if (n.Contains("aoe")) return "✹"; // burst star
+            if (n.Contains("cleave")) return "⚒"; // hammer and pick
+            if (n.Contains("loot")) return "♦"; // diamond
+            if (n.Contains("swap")) return "⇄"; // left-right arrows
+            if (n.Contains("speed")) return "↪"; // arrow hook (motion)
+            if (n.Contains("accuracy")) return "◎"; // bullseye
+            if (n.Contains("mounted")) return "♞"; // chess knight (closest broadly-supported "horse" glyph)
+            if (n.Contains("two-handed")) return "⚔";
+            if (n.Contains("polearm")) return "↑";
+            if (n.Contains("thrown")) return "→";
+            if (n.Contains("one-handed")) return "⚔";
+            return "★"; // star
+        }
+
+        // Lattice layout node: sits in a horizontal lane (see PerksSection), so the label is
+        // placed directly below - no rotation needed, lanes are spaced far enough apart
+        // vertically that a horizontal label never collides with the lane above or below it.
+        public IDocumentationGenerator PerkNode(float x, float y, string icon, int number, string name, bool unlocked, string branchColor, bool isRoot = false)
         {
             string color = unlocked ? branchColor : "#8a7aa0";
             string glow = unlocked ? $"0 0 8px {color}, 0 0 16px #6b46c1" : "none";
             string opacity = unlocked ? "1" : "0.5";
-            // Circled-digit unicode block starts at U+2460 (①) for 1, covers up to 20 (⑳).
-            string numberGlyph = (number >= 1 && number <= 20) ? char.ConvertFromUtf32(0x2460 + number - 1) : number.ToString();
-            // Root perks (branch entry point) render as a bigger "anchor star" - the rest are
-            // smaller satellites, same visual language real star maps use for a system's primary.
-            float size = isRoot ? 20f : 13f;
+            // Root perks (branch entry point) render as a bigger "anchor" node - the rest are
+            // smaller, same visual weighting the reference skill-tree uses for its class-root icon.
+            float size = isRoot ? 30f : 22f;
             // Deterministic per-node stagger so the twinkle animation (see .perk-star CSS) doesn't
-            // pulse every star in lockstep - purely cosmetic, derived from position so it's stable
+            // pulse every node in lockstep - purely cosmetic, derived from position so it's stable
             // across regenerations of the same catalog.
             float delay = ((x * 13f + y * 7f) % 40f) / 10f;
-
-            float labelDeg = angleRad * 180f / (float)Math.PI;
-            if (labelDeg > 90f || labelDeg < -90f) labelDeg += 180f; // keep text upright
-            float labelOffset = (size / 2f) + 16f;
-            float lx = x + labelOffset * (float)Math.Cos(angleRad);
-            float ly = y + labelOffset * (float)Math.Sin(angleRad);
 
             return Div(() =>
             {
                 P($"<div class=\"perk-star{(isRoot ? " perk-star-root" : "")}\" style=\"position:absolute; left:{x}px; top:{y}px;" +
                   "transform:translate(-50%,-50%);" +
-                  $"width:{size}px; height:{size}px; border-radius:50%; background:{color};" +
-                  $"box-shadow:{glow}; opacity:{opacity}; animation-delay:{delay}s;\"></div>");
+                  $"width:{size}px; height:{size}px; border-radius:50%; background:rgba(13,6,32,0.85);" +
+                  $"border:2px solid {color}; box-shadow:{glow}; opacity:{opacity};" +
+                  $"animation-delay:{delay}s; display:flex; align-items:center; justify-content:center;" +
+                  $"font-size:{size * 0.55f}px; line-height:1; color:{color};\">{icon}</div>");
 
-                P($"<div style=\"position:absolute; left:{x}px; top:{y - (size / 2f) - 12f}px;" +
-                  "transform:translate(-50%,0); font-size:13px; font-family:Georgia,serif;" +
-                  $"color:{color}; text-shadow:0 0 4px #6b46c1; opacity:{opacity};\">" +
-                  $"{numberGlyph}</div>");
+                P($"<div style=\"position:absolute; left:{x}px; top:{y - (size / 2f) - 14f}px;" +
+                  "transform:translate(-50%,0); font-size:10px; font-family:Georgia,serif;" +
+                  $"color:{color}; text-shadow:0 0 4px #6b46c1; opacity:{opacity};\">{number}</div>");
 
-                P($"<div style=\"position:absolute; left:{lx}px; top:{ly}px;" +
-                  $"transform:translate(-50%,-50%) rotate({labelDeg}deg); font-size:10px; font-family:Georgia,serif;" +
+                P($"<div style=\"position:absolute; left:{x}px; top:{y + (size / 2f) + 6f}px;" +
+                  "transform:translate(-50%,0); font-size:10px; font-family:Georgia,serif;" +
                   $"color:{color}; opacity:{opacity}; white-space:nowrap;\">{name}</div>");
             });
         }
@@ -721,73 +741,83 @@ namespace BannerlordTwitch
             IEnumerable<(string BranchName, IEnumerable<(string Key, string DisplayName, float BonusPerRank, IEnumerable<string> RequiredPerkKeys, string RequirementText)> Perks)> branches,
             Func<string, int> getRank)
         {
-            // Radial "starburst" layout: every branch is a spoke fanning out from a shared center
-            // point at its own angle (2*pi/branchCount apart), with rank 1 nearest the center and
-            // each further rank a step further out along that spoke. This replaces an earlier
-            // parallel-column layout (branch=column, rank=row) that, even with a horizontal sine
-            // wobble added on top, still read as a grid rather than a constellation - a rigid
-            // shared Y-per-row axis across every branch is what a grid *is*, no amount of per-row
-            // jitter escapes that. Radiating spokes at different angles is structurally different,
-            // not just a wobblier version of the same grid.
+            // Lattice layout, one horizontal lane per branch, ranks running left to right from a
+            // shared left-side "hub" - matching an actual reference skill-tree screenshot the
+            // user supplied (2026-08-12): several class trees fanning rightward from one origin,
+            // circular icon nodes, branch name at the end of its own row. Replaces an earlier
+            // radial "starburst" layout (branches as spokes from a center point) that the user
+            // said still "doesn't look appetizing" despite being structurally different from the
+            // parallel-column layout before it - the reference image is the actual target now,
+            // not a guess at what "constellation" should mean.
             //
-            // RequiredPerkKeys (plural) lets a node point back at prerequisites in more than one
-            // branch - drawn as one line per requirement, each colored like its *source* branch,
-            // so a hybrid capstone visibly shows two different-colored lines converging into it
-            // instead of one. Normal (single-branch) perks just have a 1-entry list.
-            const float AngleJitterAmplitude = 0.22f;   // radians of extra wander per rank, deterministic
-            const float RadiusJitterAmplitude = 14f;    // px of extra wander per rank
-            const float BaseRadius = 100f;              // distance from center to rank-1 (root)
-            const float RadiusStep = 130f;              // distance between successive ranks along a spoke
-            const float LabelPad = 60f;                 // extra distance beyond the last rank for the branch label
+            // A branch counts as a "hybrid capstone lane" (positioned between its two source
+            // lanes instead of getting its own row) when it has exactly one perk with 2+ entries
+            // in RequiredPerkKeys - detected generically here rather than by name, since this file
+            // (core BannerlordTwitch.dll) can't hard-reference any specific addon's capstone keys.
+            const float LaneSpacing = 90f;     // vertical distance between adjacent branch lanes
+            const float NodeSpacing = 130f;    // horizontal distance between ranks in a lane
+            const float OriginX = 110f;        // left starting point for rank 1 of each lane
+            const float OriginY = 70f;         // top margin before the first lane
+            const float CapstoneExtraX = 90f;  // extra horizontal offset for capstone nodes past their sources' rightmost rank
 
             var branchList = branches.ToList();
-            int branchCount = branchList.Count;
-            int maxRanks = branchCount > 0 ? branchList.Max(b => b.Perks.Count()) : 0;
-            float maxRadius = BaseRadius + Math.Max(0, maxRanks - 1) * RadiusStep + RadiusJitterAmplitude + LabelPad;
-            // Generous fixed margin beyond maxRadius on every side - branch labels are rotated
-            // text that, for spokes pointing roughly left/right, render close to horizontal and
-            // can extend 150px+ past their anchor point. Without this margin those labels get cut
-            // off by perk-scroll's overflow-x:auto (which can only reveal overflow to the right of
-            // the scrollable area, never to the left of x=0).
-            float canvasSize = maxRadius * 2f + 320f;
-            float centerX = canvasSize / 2f;
-            float centerY = canvasSize / 2f;
+            var normalLanes = new List<int>();
+            var capstoneLanes = new List<int>();
+            for (int i = 0; i < branchList.Count; i++)
+            {
+                var perksList = branchList[i].Perks.ToList();
+                bool isCapstone = perksList.Count == 1 && (perksList[0].RequiredPerkKeys?.Count() ?? 0) >= 2;
+                (isCapstone ? capstoneLanes : normalLanes).Add(i);
+            }
+
+            int laneCount = normalLanes.Count;
+            int maxRanks = normalLanes.Count > 0 ? normalLanes.Max(i => branchList[i].Perks.Count()) : 0;
+            float canvasWidth = OriginX + Math.Max(0, maxRanks - 1) * NodeSpacing + CapstoneExtraX + 260f;
+            float canvasHeight = OriginY + Math.Max(0, laneCount - 1) * LaneSpacing + 60f;
 
             return Div(() =>
             {
                 H2("Perks");
 
                 var coords = new Dictionary<string, (float x, float y)>();
-                var nodeAngle = new Dictionary<string, float>();
                 var keyBranchIndex = new Dictionary<string, int>();
-                var branchAngle = new float[branchCount];
-                var branchAngleDeg = new float[branchCount];
-                var branchOuterRadius = new float[branchCount];
-                for (int col = 0; col < branchCount; col++)
-                {
-                    // Start straight up (-90deg) and go clockwise, evenly spaced per branch.
-                    float angleBase = (float)(-Math.PI / 2.0 + (2.0 * Math.PI * col / Math.Max(1, branchCount)));
-                    branchAngle[col] = angleBase;
-                    branchAngleDeg[col] = angleBase * 180f / (float)Math.PI;
+                var laneY = new float[branchList.Count];
 
+                for (int laneIndex = 0; laneIndex < normalLanes.Count; laneIndex++)
+                {
+                    int col = normalLanes[laneIndex];
+                    float y = OriginY + laneIndex * LaneSpacing;
+                    laneY[col] = y;
                     var ordered = branchList[col].Perks.ToList();
                     for (int row = 0; row < ordered.Count; row++)
                     {
-                        // Deterministic per-node wander in both angle and radius - same catalog
-                        // always lays out identically, but no two ranks sit on a perfectly straight
-                        // spoke or a shared ring, which is what actually breaks the "grid" look.
-                        float angleJitter = (float)(Math.Sin(row * 1.7 + col * 0.9) * AngleJitterAmplitude);
-                        float radiusJitter = (float)(Math.Cos(row * 1.3 + col * 1.1) * RadiusJitterAmplitude);
-                        float angle = angleBase + angleJitter;
-                        float radius = BaseRadius + row * RadiusStep + radiusJitter;
-                        branchOuterRadius[col] = radius;
-
-                        float x = centerX + radius * (float)Math.Cos(angle);
-                        float y = centerY + radius * (float)Math.Sin(angle);
+                        float x = OriginX + row * NodeSpacing;
                         coords[ordered[row].Key] = (x, y);
-                        nodeAngle[ordered[row].Key] = angle;
                         keyBranchIndex[ordered[row].Key] = col;
                     }
+                }
+
+                // Capstones sit past the rightmost normal rank, at the vertical midpoint between
+                // the lanes their two requirements come from - visually "between" the two branches
+                // they combine, with lines converging into it from both sides.
+                foreach (int col in capstoneLanes)
+                {
+                    var perk = branchList[col].Perks.First();
+                    var reqYs = new List<float>();
+                    float maxReqX = OriginX;
+                    foreach (var reqKey in perk.RequiredPerkKeys)
+                    {
+                        if (coords.TryGetValue(reqKey, out var reqPos))
+                        {
+                            reqYs.Add(reqPos.y);
+                            maxReqX = Math.Max(maxReqX, reqPos.x);
+                        }
+                    }
+                    float capY = reqYs.Count > 0 ? reqYs.Average() : OriginY;
+                    float capX = maxReqX + CapstoneExtraX;
+                    laneY[col] = capY;
+                    coords[perk.Key] = (capX, capY);
+                    keyBranchIndex[perk.Key] = col;
                 }
 
                 Div("perk-scroll", () =>
@@ -795,30 +825,31 @@ namespace BannerlordTwitch
                     Div("perk-constellation", () =>
                     {
                         // Spacer in normal flow so this position:relative container actually
-                        // reserves canvasSize x canvasSize - its real children below are all
+                        // reserves canvasWidth x canvasHeight - its real children below are all
                         // position:absolute and (correctly) don't otherwise contribute to its size.
-                        P($"<div style=\"position:relative; width:{canvasSize}px; height:{canvasSize}px;\"></div>");
+                        P($"<div style=\"position:relative; width:{canvasWidth}px; height:{canvasHeight}px;\"></div>");
 
-                        // Branch labels sit just beyond that spoke's outermost star, in the same
-                        // direction the spoke points - like a constellation's name at its tip - and
-                        // are rotated to follow the spoke's own angle. Horizontal labels around a
-                        // shared outer ring collide with each other once there are more than a
-                        // handful of branches; a label that points the same way its spoke does only
-                        // has to avoid its immediate neighbors, not the whole ring.
-                        for (int col = 0; col < branchCount; col++)
+                        // Branch label sits right after that lane's last node (normal lanes) or
+                        // right after the capstone node itself.
+                        for (int laneIndex = 0; laneIndex < normalLanes.Count; laneIndex++)
                         {
-                            float labelRadius = branchOuterRadius[col] + LabelPad;
-                            float lx = centerX + labelRadius * (float)Math.Cos(branchAngle[col]);
-                            float ly = centerY + labelRadius * (float)Math.Sin(branchAngle[col]);
-                            // Keep text upright: flip 180deg whenever the raw spoke angle would
-                            // otherwise render the label upside-down (roughly the bottom half of
-                            // the circle).
-                            float labelDeg = branchAngleDeg[col];
-                            if (labelDeg > 90f || labelDeg < -90f) labelDeg += 180f;
+                            int col = normalLanes[laneIndex];
+                            var ordered = branchList[col].Perks.ToList();
+                            float labelX = OriginX + Math.Max(0, ordered.Count - 1) * NodeSpacing + 34f;
+                            float y = laneY[col];
                             string color = PerkBranchColor(col);
-                            P($"<div style=\"position:absolute; left:{lx}px; top:{ly}px;" +
-                              $"transform:translate(-50%,-50%) rotate({labelDeg}deg); font-size:12px; font-family:Georgia,serif; font-weight:bold;" +
-                              $"color:{color}; text-shadow:0 0 4px #6b46c1; opacity:1; white-space:nowrap; text-align:center;\">{branchList[col].BranchName}</div>");
+                            P($"<div style=\"position:absolute; left:{labelX}px; top:{y}px;" +
+                              "transform:translate(0,-50%); font-size:13px; font-family:Georgia,serif; font-weight:bold;" +
+                              $"color:{color}; text-shadow:0 0 4px #6b46c1; opacity:1; white-space:nowrap;\">{branchList[col].BranchName}</div>");
+                        }
+                        foreach (int col in capstoneLanes)
+                        {
+                            var perk = branchList[col].Perks.First();
+                            var pos = coords[perk.Key];
+                            string color = PerkBranchColor(col);
+                            P($"<div style=\"position:absolute; left:{pos.x + 22f}px; top:{pos.y}px;" +
+                              "transform:translate(0,-50%); font-size:13px; font-family:Georgia,serif; font-weight:bold;" +
+                              $"color:{color}; text-shadow:0 0 4px #6b46c1; opacity:1; white-space:nowrap;\">{branchList[col].BranchName}</div>");
                         }
 
                         foreach (var branch in branchList)
@@ -834,18 +865,28 @@ namespace BannerlordTwitch
                                 }
                             }
                         }
-                        for (int col = 0; col < branchCount; col++)
+                        for (int laneIndex = 0; laneIndex < normalLanes.Count; laneIndex++)
                         {
+                            int col = normalLanes[laneIndex];
                             string branchColor = PerkBranchColor(col);
+                            string icon = PerkBranchIcon(branchList[col].BranchName);
                             int num = 1;
                             foreach (var p in branchList[col].Perks)
                             {
                                 var c = coords[p.Key];
                                 bool unlocked = getRank(p.Key) > 0;
-                                float angle = nodeAngle.TryGetValue(p.Key, out var a) ? a : branchAngle[col];
-                                PerkNode(c.x, c.y, angle, num, p.DisplayName, unlocked, branchColor, isRoot: num == 1);
+                                PerkNode(c.x, c.y, icon, num, p.DisplayName, unlocked, branchColor, isRoot: num == 1);
                                 num++;
                             }
+                        }
+                        foreach (int col in capstoneLanes)
+                        {
+                            var perk = branchList[col].Perks.First();
+                            var c = coords[perk.Key];
+                            bool unlocked = getRank(perk.Key) > 0;
+                            string branchColor = PerkBranchColor(col);
+                            string icon = PerkBranchIcon(branchList[col].BranchName);
+                            PerkNode(c.x, c.y, icon, 1, perk.DisplayName, unlocked, branchColor, isRoot: false);
                         }
                     });
                 });
