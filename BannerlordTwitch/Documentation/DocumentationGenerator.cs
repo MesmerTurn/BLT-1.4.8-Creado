@@ -11,6 +11,8 @@ using HarmonyLib;
 using JetBrains.Annotations;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.Core;
+using TaleWorlds.Core.ImageIdentifiers;
+using TaleWorlds.Core.ViewModelCollection.ImageIdentifiers;
 using TaleWorlds.Engine;
 using TaleWorlds.Engine.GauntletUI;
 using TaleWorlds.GauntletUI.Data;
@@ -100,7 +102,6 @@ namespace BannerlordTwitch
         {
             // Wait for image writes first
             await WaitForPendingImagesAsync();
-            await MainThreadSync.RunWaitAsync(ReleaseItemTableauLayer);
 
             await MainThreadSync.RunWaitAsync(() =>
             {
@@ -358,18 +359,25 @@ namespace BannerlordTwitch
         // every TaleWorlds*.dll in the game's bin folder), so every item image request was queued
         // into pendingImages and never removed, guaranteeing either a broken <img> link (if the
         // wait gave up) or the generator hanging until its wait timeout regardless of how long
-        // that timeout was. Replaced with TaleWorlds.MountAndBlade.GauntletUI.Widgets.ItemTableauWidget,
-        // the same widget the game's own inventory/encyclopedia screens use to render item icons -
-        // hosted in a small dedicated prefab (_Module/GUI/Prefabs/BLTItemTableauCapture.xml) via a
-        // GauntletLayer, same pattern BLTHeroWidgetBehavior already uses successfully elsewhere in
-        // this codebase for a different overlay. One shared widget instance renders items one at a
-        // time (changing its bound StringId per item) rather than one widget per item, since
-        // there's no per-item constructor overload - items are queued and drained sequentially by
-        // ProcessItemTableauQueueAsync, called from WaitForPendingImagesAsync.
-        private GauntletLayer _itemTableauLayer;
-        private ItemTableauCaptureVM _itemTableauVM;
-        private ItemTableauWidget _itemTableauWidget;
-        private readonly Queue<(string StringId, string Name, string LocalPath)> _itemTableauQueue = new();
+        // that timeout was.
+        //
+        // First replacement attempt used ItemTableauWidget directly (the big rotatable 3D preview
+        // widget from the inventory detail panel) - it never populated .Texture no matter how long
+        // given, even once correctly located in the prefab tree. That widget appears to depend on
+        // scene/camera setup the inventory screen provides that a bare GauntletLayer doesn't.
+        //
+        // Switched to ImageIdentifierWidget + ItemImageIdentifierVM instead - the same
+        // lighter-weight mechanism vanilla Bannerlord uses for item icons in lists (inventory
+        // rows, encyclopedia lists), which doesn't need a dedicated preview scene. Still hosted
+        // in the same dedicated prefab (_Module/GUI/Prefabs/BLTItemTableauCapture.xml) via a
+        // GauntletLayer, same pattern BLTHeroWidgetBehavior already uses successfully elsewhere
+        // in this codebase for a different overlay - but one layer PER item here rather than one
+        // shared/reused layer: ItemImageIdentifierVM takes its ItemObject as a constructor
+        // argument (reflection-confirmed no way to change it after construction), so there's
+        // nothing to gain from keeping a layer alive across items the way the ItemTableauWidget
+        // attempt did. Items are queued and drained sequentially by ProcessItemTableauQueueAsync,
+        // called from WaitForPendingImagesAsync.
+        private readonly Queue<(ItemObject Item, string Name, string LocalPath)> _itemTableauQueue = new();
 
         public IDocumentationGenerator Img(ItemObject item) => Img(null, item);
         public IDocumentationGenerator Img(string css, ItemObject item)
@@ -385,65 +393,58 @@ namespace BannerlordTwitch
                 // ignored
             }
             pendingImages.TryAdd(localPath, null);
-            _itemTableauQueue.Enqueue((item.StringId, item.Name.ToString(), localPath));
+            _itemTableauQueue.Enqueue((item, item.Name.ToString(), localPath));
             return this;
         }
 
         private async Task ProcessItemTableauQueueAsync()
         {
             if (_itemTableauQueue.Count == 0) return;
-            try
+
+            while (_itemTableauQueue.Count > 0)
             {
-                // Every GauntletLayer/widget/ViewModel touch below MUST happen on the main thread
-                // - Gauntlet UI isn't thread-safe, and WaitForPendingImagesAsync (this method's
-                // caller) resumes on a thread-pool thread after each `await Task.Delay`, not the
-                // main thread. This project already has MainThreadSync for exactly this reason
-                // (see its own doc comment / usage in Settings.cs) - every mutation and every
-                // Texture read here goes through MainThreadSync.RunWaitAsync so it actually runs
-                // where the engine expects it to.
-                if (_itemTableauLayer == null)
+                var (item, name, localPath) = _itemTableauQueue.Dequeue();
+                GauntletLayer layer = null;
+                ImageIdentifierWidget widget = null;
+                try
                 {
+                    // Every GauntletLayer/widget/ViewModel touch here MUST happen on the main
+                    // thread - Gauntlet UI isn't thread-safe, and WaitForPendingImagesAsync (this
+                    // method's caller) resumes on a thread-pool thread after each
+                    // `await Task.Delay`, not the main thread. This project already has
+                    // MainThreadSync for exactly this reason (see its own doc comment / usage in
+                    // Settings.cs).
                     await MainThreadSync.RunWaitAsync(() =>
                     {
-                        _itemTableauVM = new ItemTableauCaptureVM();
-                        _itemTableauLayer = new GauntletLayer("BLTDocItemTableauLayer", 200, false);
-                        var movieId = _itemTableauLayer.LoadMovie("BLTItemTableauCapture", _itemTableauVM);
-                        ScreenManager.TopScreen?.AddLayer(_itemTableauLayer);
-                        // FindChildrenWithType<T> doesn't match the ItemTableauWidget here despite
-                        // it genuinely being that exact type (reflection-confirmed via
-                        // GetChild(0).GetType() during debugging, 2026-08-12) - it may only search
-                        // grandchildren-and-deeper rather than immediate children. The prefab's
-                        // structure is fixed and known (one Widget wrapping exactly one
-                        // ItemTableauWidget, per BLTItemTableauCapture.xml), so read it directly
-                        // instead of relying on that search.
-                        _itemTableauWidget = movieId?.Movie?.RootWidget?.GetChild(0) as ItemTableauWidget;
+                        var vm = new ItemImageIdentifierVM(item, "");
+                        layer = new GauntletLayer("BLTDocItemTableauLayer", 200, false);
+                        var movieId = layer.LoadMovie("BLTItemTableauCapture", vm);
+                        ScreenManager.TopScreen?.AddLayer(layer);
+                        // FindChildrenWithType<T> didn't match the widget here in testing despite
+                        // it genuinely being the expected type at that tree position (reflection-
+                        // confirmed via GetChild(0).GetType() while debugging, 2026-08-12) - it
+                        // may only search grandchildren-and-deeper rather than immediate
+                        // children. The prefab's structure is fixed and known (one Widget
+                        // wrapping exactly one ImageIdentifierWidget, per
+                        // BLTItemTableauCapture.xml), so read it directly instead of relying on
+                        // that search.
+                        widget = movieId?.Movie?.RootWidget?.GetChild(0) as ImageIdentifierWidget;
                     });
-                }
 
-                if (_itemTableauWidget == null)
-                {
-                    Log.Error("DocumentationGenerator: ItemTableauWidget not found in the BLTItemTableauCapture prefab - item icons will be broken links this generation.");
-                    foreach (var q in _itemTableauQueue) pendingImages.TryRemove(q.LocalPath, out _);
-                    _itemTableauQueue.Clear();
-                    return;
-                }
-
-                while (_itemTableauQueue.Count > 0)
-                {
-                    var (stringId, name, localPath) = _itemTableauQueue.Dequeue();
-                    TaleWorlds.TwoDimension.Texture previousTexture = null;
-                    await MainThreadSync.RunWaitAsync(() =>
+                    if (widget == null)
                     {
-                        previousTexture = _itemTableauWidget.Texture;
-                        _itemTableauVM.ItemStringId = stringId;
-                    });
+                        Log.Error($"DocumentationGenerator: ImageIdentifierWidget not found in the BLTItemTableauCapture prefab for '{name}' - broken link.");
+                        pendingImages.TryRemove(localPath, out _);
+                        continue;
+                    }
 
-                    // ItemTableauWidget.Texture is TaleWorlds.TwoDimension.Texture (a UI-layer
-                    // wrapper), not the TaleWorlds.Engine.Texture TextureComplete expects (that's
-                    // what the old TableauCacheManager callback used to hand it directly). The
-                    // real engine texture is reachable through PlatformTexture, whose concrete
-                    // runtime type on this render backend is EngineTexture (reflection-confirmed)
-                    // - .Texture on that unwraps to the actual TaleWorlds.Engine.Texture.
+                    // ImageIdentifierWidget.Texture is TaleWorlds.TwoDimension.Texture (a
+                    // UI-layer wrapper), not the TaleWorlds.Engine.Texture TextureComplete
+                    // expects (that's what the old TableauCacheManager callback used to hand it
+                    // directly). The real engine texture is reachable through PlatformTexture,
+                    // whose concrete runtime type on this render backend is EngineTexture
+                    // (reflection-confirmed) - .Texture on that unwraps to the actual
+                    // TaleWorlds.Engine.Texture.
                     TaleWorlds.Engine.Texture captured = null;
                     // ~4s budget per item at 50ms polls - a single item render is a small,
                     // bounded operation (unlike the old bulk "wait for everything" timeout this
@@ -453,8 +454,8 @@ namespace BannerlordTwitch
                         await Task.Delay(50);
                         await MainThreadSync.RunWaitAsync(() =>
                         {
-                            var current = _itemTableauWidget.Texture;
-                            if (current != null && current != previousTexture
+                            var current = widget.Texture;
+                            if (current != null
                                 && current.PlatformTexture is TaleWorlds.Engine.GauntletUI.EngineTexture engineTexture)
                             {
                                 captured = engineTexture.Texture;
@@ -472,23 +473,23 @@ namespace BannerlordTwitch
                         pendingImages.TryRemove(localPath, out _);
                     }
                 }
+                catch (Exception ex)
+                {
+                    Log.Exception("ProcessItemTableauQueueAsync", ex);
+                    pendingImages.TryRemove(localPath, out _);
+                }
+                finally
+                {
+                    if (layer != null)
+                    {
+                        await MainThreadSync.RunWaitAsync(() =>
+                        {
+                            try { ScreenManager.TopScreen?.RemoveLayer(layer); }
+                            catch (Exception ex) { Log.Exception("ProcessItemTableauQueueAsync: RemoveLayer", ex); }
+                        });
+                    }
+                }
             }
-            catch (Exception ex)
-            {
-                Log.Exception("ProcessItemTableauQueueAsync", ex);
-                foreach (var q in _itemTableauQueue) pendingImages.TryRemove(q.LocalPath, out _);
-                _itemTableauQueue.Clear();
-            }
-        }
-
-        private void ReleaseItemTableauLayer()
-        {
-            if (_itemTableauLayer == null) return;
-            try { ScreenManager.TopScreen?.RemoveLayer(_itemTableauLayer); }
-            catch (Exception ex) { Log.Exception("ReleaseItemTableauLayer", ex); }
-            _itemTableauLayer = null;
-            _itemTableauVM = null;
-            _itemTableauWidget = null;
         }
 
         public IDocumentationGenerator Img(CharacterCode cc, string altText) => Img(null, cc, altText);
@@ -1063,17 +1064,4 @@ namespace BannerlordTwitch
         }
     }
 
-    // Backing ViewModel for _Module/GUI/Prefabs/BLTItemTableauCapture.xml - a single
-    // ItemTableauWidget bound to ItemStringId, reused across every item image request during one
-    // documentation generation (see DocumentationGenerator.Img(ItemObject) / ProcessItemTableauQueueAsync).
-    public class ItemTableauCaptureVM : ViewModel
-    {
-        private string _itemStringId = "";
-        [DataSourceProperty]
-        public string ItemStringId
-        {
-            get => _itemStringId;
-            set { if (_itemStringId != value) { _itemStringId = value; OnPropertyChanged(nameof(ItemStringId)); } }
-        }
-    }
 }
