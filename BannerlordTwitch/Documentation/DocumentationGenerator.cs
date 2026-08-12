@@ -574,14 +574,29 @@ namespace BannerlordTwitch
             try
             {
                 string path = Path.Combine(DocumentationRootDir, localPath);
+                // Texture.SaveToFile(localPath, ...) resolves that relative path against the
+                // engine's own resource root, not this .NET process's CWD - confirmed 2026-08-12
+                // by finding the actual written files sitting in
+                // "...\Mount & Blade II Bannerlord\bin\Win64_Shipping_Client\blt_img_N.png" while
+                // every File.Exists(localPath) check below (relative-path resolution) reported
+                // false, so every single export silently "failed" despite the file genuinely
+                // being written. AppDomain.CurrentDomain.BaseDirectory is that same bin folder for
+                // a running Bannerlord process - check/read there instead of a bare relative path.
+                string enginePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, localPath);
                 texture.TransformRenderTargetToResource(localPath);
-                texture.SaveToFile(localPath, false);
-                for (int i = 0; i < 100 && !File.Exists(localPath); i++)
+                // Texture.SaveToFile(path, isRelativePath) - the 2nd parameter is NOT a
+                // compression/format flag, it's literally "is this path relative"
+                // (reflection-confirmed 2026-08-12). localPath ("blt_img_N.png") genuinely is
+                // relative; passing false told the engine to treat it as an absolute path, which
+                // it isn't - the observed result was an empty directory created at that name
+                // instead of a file, every single time.
+                texture.SaveToFile(localPath, true);
+                for (int i = 0; i < 100 && !File.Exists(enginePath); i++)
                 {
                     await Task.Delay(100);
                 }
 
-                if (File.Exists(localPath))
+                if (File.Exists(enginePath))
                 {
                     Directory.CreateDirectory(DocumentationRootDir);
                     if (File.Exists(path))
@@ -590,13 +605,13 @@ namespace BannerlordTwitch
                     }
 
                     // Scoped to make sure it gets closed and disposed
-                    using (var bitmap = new Bitmap(localPath))
+                    using (var bitmap = new Bitmap(enginePath))
                     {
                         var corrected = SwapRedAndBlueChannels(bitmap);
                         corrected.Save(path);
                     }
 
-                    File.Delete(localPath);
+                    File.Delete(enginePath);
                 }
                 else
                 {
