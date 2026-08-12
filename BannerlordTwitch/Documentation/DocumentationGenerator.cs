@@ -303,6 +303,7 @@ namespace BannerlordTwitch
             // completes - by the time this generic wait loop runs, only genuinely-unresolvable
             // entries are left in pendingImages (e.g. the still-unfixed CharacterCode image path).
             await ProcessItemTableauQueueAsync();
+            await ProcessCharacterTableauQueueAsync();
 
             // 2026-08-12 history: this used to be a flat/scaled timeout (10s, then
             // Max(10_000, count*500), then over-corrected to Max(4_000, count*150)) built on the
@@ -492,6 +493,16 @@ namespace BannerlordTwitch
             }
         }
 
+        // Same fix as Img(ItemObject) above (see that method's comment for the full history) -
+        // this used to queue into pendingImages and never remove, via a TableauCacheManager call
+        // that's been fully commented out (not even version-gated like the item path was) for
+        // long enough that nobody noticed it never ran. Same ImageIdentifierWidget mechanism,
+        // same reused prefab (BLTItemTableauCapture.xml's binding is to the base ImageIdentifierVM
+        // properties Id/AdditionalArgs/TextureProviderName, so it works for any subclass -
+        // CharacterImageIdentifierVM here, ItemImageIdentifierVM there), just backed by
+        // CharacterImageIdentifierVM(CharacterCode) instead of ItemImageIdentifierVM(ItemObject).
+        private readonly Queue<(CharacterCode Character, string Name, string LocalPath)> _characterTableauQueue = new();
+
         public IDocumentationGenerator Img(CharacterCode cc, string altText) => Img(null, cc, altText);
         public IDocumentationGenerator Img(string css, CharacterCode cc, string altText)
         {
@@ -506,18 +517,79 @@ namespace BannerlordTwitch
                 // ignored
             }
             pendingImages.TryAdd(localPath, null);
-
-            overrideRenderSettings = camera =>
-            {
-                //camera.SetViewVolume(false, -500, 500, 0, 1000, -500, 500);
-                camera.Position -= camera.Direction * 1.2f;
-                camera.Position -= Vec3.Up * 0.6f;
-                camera.SetFovHorizontal(camera.GetFovHorizontal(), 120f / 256f, 0.1f, 1000f);
-                return (120, 256);
-            };
-            //TableauCacheManager.Current.BeginCreateCharacterTexture(cc,
-            //    texture => TextureComplete(altText, localPath, texture), true);
+            _characterTableauQueue.Enqueue((cc, altText, localPath));
             return this;
+        }
+
+        private async Task ProcessCharacterTableauQueueAsync()
+        {
+            if (_characterTableauQueue.Count == 0) return;
+
+            while (_characterTableauQueue.Count > 0)
+            {
+                var (cc, name, localPath) = _characterTableauQueue.Dequeue();
+                GauntletLayer layer = null;
+                ImageIdentifierWidget widget = null;
+                try
+                {
+                    await MainThreadSync.RunWaitAsync(() =>
+                    {
+                        var vm = new CharacterImageIdentifierVM(cc);
+                        layer = new GauntletLayer("BLTDocCharacterTableauLayer", 200, false);
+                        var movieId = layer.LoadMovie("BLTItemTableauCapture", vm);
+                        ScreenManager.TopScreen?.AddLayer(layer);
+                        widget = movieId?.Movie?.RootWidget?.GetChild(0) as ImageIdentifierWidget;
+                    });
+
+                    if (widget == null)
+                    {
+                        Log.Error($"DocumentationGenerator: ImageIdentifierWidget not found in the BLTItemTableauCapture prefab for character '{name}' - broken link.");
+                        pendingImages.TryRemove(localPath, out _);
+                        continue;
+                    }
+
+                    TaleWorlds.Engine.Texture captured = null;
+                    for (int i = 0; i < 80 && captured == null; i++)
+                    {
+                        await Task.Delay(50);
+                        await MainThreadSync.RunWaitAsync(() =>
+                        {
+                            var current = widget.Texture;
+                            if (current != null
+                                && current.PlatformTexture is TaleWorlds.Engine.GauntletUI.EngineTexture engineTexture)
+                            {
+                                captured = engineTexture.Texture;
+                            }
+                        });
+                    }
+
+                    if (captured != null)
+                    {
+                        TextureComplete(name, localPath, captured);
+                    }
+                    else
+                    {
+                        Log.Error($"DocumentationGenerator: character tableau for '{name}' never rendered a texture in time.");
+                        pendingImages.TryRemove(localPath, out _);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Exception("ProcessCharacterTableauQueueAsync", ex);
+                    pendingImages.TryRemove(localPath, out _);
+                }
+                finally
+                {
+                    if (layer != null)
+                    {
+                        await MainThreadSync.RunWaitAsync(() =>
+                        {
+                            try { ScreenManager.TopScreen?.RemoveLayer(layer); }
+                            catch (Exception ex) { Log.Exception("ProcessCharacterTableauQueueAsync: RemoveLayer", ex); }
+                        });
+                    }
+                }
+            }
         }
 
         public IDocumentationGenerator MakeAnchor(string tag, Action content)
