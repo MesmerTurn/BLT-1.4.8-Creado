@@ -403,15 +403,28 @@ namespace BannerlordTwitch
                 // where the engine expects it to.
                 if (_itemTableauLayer == null)
                 {
+                    GauntletMovieIdentifier movieId = null;
                     await MainThreadSync.RunWaitAsync(() =>
                     {
                         _itemTableauVM = new ItemTableauCaptureVM();
                         _itemTableauLayer = new GauntletLayer("BLTDocItemTableauLayer", 200, false);
-                        var movieId = _itemTableauLayer.LoadMovie("BLTItemTableauCapture", _itemTableauVM);
+                        movieId = _itemTableauLayer.LoadMovie("BLTItemTableauCapture", _itemTableauVM);
                         ScreenManager.TopScreen?.AddLayer(_itemTableauLayer);
-                        _itemTableauWidget = movieId?.Movie?.RootWidget?
-                            .FindChildrenWithType<ItemTableauWidget>(true)?.FirstOrDefault();
                     });
+
+                    // The widget tree isn't necessarily fully built the instant LoadMovie
+                    // returns - confirmed 2026-08-12: a one-shot lookup right after LoadMovie
+                    // logged "ItemTableauWidget not found" every time. Retry across a few frames
+                    // instead of assuming it's ready synchronously.
+                    for (int i = 0; i < 40 && _itemTableauWidget == null; i++)
+                    {
+                        await Task.Delay(50);
+                        await MainThreadSync.RunWaitAsync(() =>
+                        {
+                            _itemTableauWidget = movieId?.Movie?.RootWidget?
+                                .FindChildrenWithType<ItemTableauWidget>(true)?.FirstOrDefault();
+                        });
+                    }
                 }
 
                 if (_itemTableauWidget == null)
