@@ -37,6 +37,45 @@ namespace BLTAdoptAHero
         private readonly Dictionary<Hero, HeroMissionState> heroMissionState = new();
         private readonly List<Agent> adoptedHeroMounts = new();
 
+        // 2026-08-17: exotic RoT mounts (dragon/chariot/mammoth/elephant) can't be used in hideout
+        // or siege missions - hideouts are on foot only, sieges have no mount slot. Chariot/mammoth/
+        // elephant additionally can't be used in naval missions (they don't swim any better than a
+        // normal horse), but dragon is explicitly EXEMPT from the naval restriction - dragons fly,
+        // and RoT's own authors confirm dragons in naval battles are intended. Unlike a regular
+        // horse none of this is handled by native spawn code (nothing here overrides mission
+        // equipment for these item IDs), so it's done explicitly: on mission start, any adopted
+        // hero riding a mount this mission forbids gets temporarily dismounted
+        // (BattleEquipment[Horse]/[HorseHarness] cleared) for the duration of the mission, then
+        // restored in OnEndMission. This only ever touches the persistent campaign equipment of
+        // heroes actually riding an exotic mount - normal horses/camels are left alone entirely
+        // since vanilla already handles those correctly.
+        private readonly Dictionary<Hero, (EquipmentElement mount, EquipmentElement harness)> suppressedExoticMounts = new();
+
+        private static bool MountForbiddenInCurrentMission(string mountId)
+        {
+            if (MissionHelpers.InHideOutMission() || MissionHelpers.InSiegeMission()) return true;
+            if (EquipHero.DragonMountIds.Contains(mountId)) return false; // dragons fly - naval is fine
+            return Mission.Current?.GetMissionBehavior<NavalDLC.Missions.MissionLogics.DefaultNavalMissionLogic>() != null;
+        }
+
+        public BLTAdoptAHeroCommonMissionBehavior()
+        {
+            SafeCall(() =>
+            {
+                foreach (var hero in BLTAdoptAHeroCampaignBehavior.GetAllAdoptedHeroes())
+                {
+                    var mountId = hero.BattleEquipment[EquipmentIndex.Horse].Item?.StringId;
+                    if (mountId == null || !EquipHero.ExoticMountIds.Contains(mountId)) continue;
+                    if (!MountForbiddenInCurrentMission(mountId)) continue;
+
+                    suppressedExoticMounts[hero] = (hero.BattleEquipment[EquipmentIndex.Horse],
+                        hero.BattleEquipment[EquipmentIndex.HorseHarness]);
+                    hero.BattleEquipment[EquipmentIndex.Horse] = EquipmentElement.Invalid;
+                    hero.BattleEquipment[EquipmentIndex.HorseHarness] = EquipmentElement.Invalid;
+                }
+            });
+        }
+
         public float PlayerSidePower { get; private set; }
         public float EnemySidePower { get; private set; }
         public float PlayerPowerRatio => PlayerSidePower / Math.Max(1, EnemySidePower);
@@ -158,6 +197,15 @@ namespace BLTAdoptAHero
         protected override void OnEndMission()
         {
             MissionInfoHub.Clear();
+            SafeCall(() =>
+            {
+                foreach (var (hero, (mount, harness)) in suppressedExoticMounts)
+                {
+                    hero.BattleEquipment[EquipmentIndex.Horse] = mount;
+                    hero.BattleEquipment[EquipmentIndex.HorseHarness] = harness;
+                }
+                suppressedExoticMounts.Clear();
+            });
         }
 
         [UsedImplicitly, HarmonyPrefix, HarmonyPatch(typeof(Mission), "OnAgentRemoved")]

@@ -351,6 +351,8 @@
     <Compile Include="Prestige\PrestigeLevelDef.cs" />
     <Compile Include="Prestige\PrestigeSettings.cs" />
     <Compile Include="Patches\PrestigeStatPatches.cs" />
+    <Compile Include="Patches\HeroStatSummaryHook.cs" />
+    <Compile Include="GalleryGeneration\HeroGalleryGenerator.cs" />
     <Compile Include="Actions\AuctionItem.cs" />
     <Compile Include="Actions\SetHeroClass.cs" />
     <Compile Include="Actions\SimpleDiplomacy.cs" />

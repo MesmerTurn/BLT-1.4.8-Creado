@@ -117,6 +117,15 @@ namespace BLTAdoptAHero
                 return;
             }
 
+            // Moderator-gated classes: the role comes from the Twitch message itself, so this
+            // cannot be spoofed by the viewer. Broadcaster counts as a moderator here - it would
+            // be odd for the streamer to be locked out of their own class.
+            if (newClass.ModeratorsOnly && !context.IsModerator && !context.IsBroadcaster)
+            {
+                onFailure("{=modonly01}That class is for moderators only".Translate());
+                return;
+            }
+
             if (newClass.RequireClass && !string.IsNullOrEmpty(newClass.RequiredClassName))
             {
                 var requiredClass = BLTAdoptAHeroModule.HeroClassConfig.FindClass(newClass.RequiredClassName);

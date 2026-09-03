@@ -322,10 +322,29 @@ namespace BLTAdoptAHero
                 return;
             }
 
-            BLTSummonBehavior.Current.DoNextTick(() =>
+            // This fork had lost the settlement dispatch that RandomChair's 5.2.4 (and the 5.3.0
+            // Chair port) both have - SummonInLocation existed here but was never called, so EVERY
+            // summon, including one inside a tavern, went through SummonInBattle and spawned the
+            // hero as a raw battle agent. A battle agent isn't a proper LocationCharacter, which is
+            // what the game's conversation system expects of a settlement NPC, so the vanilla
+            // wanderer dialogue ran but never offered the "I'd like to hire you" branch.
+            //
+            // SummonInLocation here is byte-for-byte identical to RandomChair's working copy - the
+            // only thing missing was this call. Restoring it makes the hero spawn as a real tavern
+            // character (LocationCharacter.CreateBodyguardHero + Location.AddCharacter), so the
+            // normal hire dialogue works on its own, as an option the player chooses - no forced
+            // or automatic hiring.
+            if (CampaignMission.Current.Location != null)
             {
-                SummonInBattle(adoptedHero, settings, context, onSuccess, onFailure);
-            });
+                SummonInLocation(adoptedHero, settings, context, onSuccess, onFailure);
+            }
+            else
+            {
+                BLTSummonBehavior.Current.DoNextTick(() =>
+                {
+                    SummonInBattle(adoptedHero, settings, context, onSuccess, onFailure);
+                });
+            }
         }
 
         private static void SummonInLocation(Hero adoptedHero, Settings settings, ReplyContext context,

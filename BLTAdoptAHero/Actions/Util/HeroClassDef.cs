@@ -39,6 +39,11 @@ namespace BLTAdoptAHero
          PropertyOrder(1), UsedImplicitly]
         public LocString Description { get; set; } = string.Empty;
 
+        [LocDisplayName("Moderators Only"),
+         LocDescription("If enabled, only channel moderators (and the broadcaster) can switch to this class. It still shows in the class list, but the switch is refused for everyone else."),
+         PropertyOrder(2), UsedImplicitly]
+        public bool ModeratorsOnly { get; set; } = false;
+
         [LocDisplayName("Require Previous Class"),
          LocDescription("If enabled, the hero must currently be in the Required Class (and optionally have enough kills) before they can switch to this class"),
          PropertyOrder(2), UsedImplicitly]
@@ -104,6 +109,16 @@ namespace BLTAdoptAHero
          PropertyOrder(13), UsedImplicitly]
         public bool UseChariot { get; set; }
 
+        [LocDisplayName("Use Mammoth (RoT)"),
+         LocDescription("Use a mammoth mount from Realm of Thrones. Single item, not tiered. Requires RoT 8.0. Automatically dismounted for the duration of hideout, siege and naval missions, same as a normal horse would be."),
+         PropertyOrder(13), UsedImplicitly]
+        public bool UseMammoth { get; set; }
+
+        [LocDisplayName("Use Elephant (RoT)"),
+         LocDescription("Use an elephant mount from Realm of Thrones. Single item, not tiered. Requires RoT 8.0. Automatically dismounted for the duration of hideout, siege and naval missions, same as a normal horse would be."),
+         PropertyOrder(13), UsedImplicitly]
+        public bool UseElephant { get; set; }
+
         [LocDisplayName("{=MvddFKo4}Passive Power"),
          LocDescription("{=F8a2nXYo}Passive hero power: this will always apply to the hero (i.e. a permanent buff)"),
          PropertyOrder(14), ExpandableObject, Expand, UsedImplicitly]
@@ -151,6 +166,8 @@ namespace BLTAdoptAHero
                 if (UseCamel) parts.Add("{=HMclWXR8}Camel".Translate());
                 if (UseDragon) parts.Add("Dragon (RoT)");
                 if (UseChariot) parts.Add("Chariot (RoT)");
+                if (UseMammoth) parts.Add("Mammoth (RoT)");
+                if (UseElephant) parts.Add("Elephant (RoT)");
                 return string.Join("/", parts);
             }
         }
@@ -164,7 +181,7 @@ namespace BLTAdoptAHero
             => IndexedSlots.Where(s => s.type is not (EquipmentType.None or EquipmentType.Shield));
 
         [YamlIgnore, Browsable(false)]
-        public bool Mounted => UseHorse || UseCamel || UseDragon || UseChariot;
+        public bool Mounted => UseHorse || UseCamel || UseDragon || UseChariot || UseMammoth || UseElephant;
 
         [YamlIgnore, Browsable(false)]
         public IEnumerable<SkillObject> WeaponSkills =>
@@ -198,7 +215,9 @@ namespace BLTAdoptAHero
             + (UseHorse ? " (" + "{=A1G6bq0G}Use Horse".Translate() + ")" : "")
             + (UseCamel ? " (" + "{=FpgyZk0F}Use Camel".Translate() + ")" : "")
             + (UseDragon ? " (Dragon RoT)" : "")
-            + (UseChariot ? " (Chariot RoT)" : "");
+            + (UseChariot ? " (Chariot RoT)" : "")
+            + (UseMammoth ? " (Mammoth RoT)" : "")
+            + (UseElephant ? " (Elephant RoT)" : "");
 
         #endregion
 
@@ -315,6 +334,59 @@ namespace BLTAdoptAHero
                                     .FirstOrDefault(item
                                         => item.Type == ItemObject.ItemTypeEnum.Horse
                                            && item.HorseComponent.Monster.FamilyType == (int)EquipHero.MountFamilyType.camel);
+                                if (exampleItem != null)
+                                    generator.Img("equip-img", exampleItem);
+                            });
+                        }
+                        // 2026-08-17: this table never grew a row for the 4 RoT mounts added
+                        // alongside UseHorse/UseCamel above - classes using Dragon/Chariot/
+                        // Mammoth/Elephant got no Mount row at all (confirmed live: the
+                        // documentation page simply had no image for them here, though the
+                        // separate per-tier character portrait elsewhere on the page still
+                        // generated fine - it's just a tight headshot crop that never shows any
+                        // mount, horse included, so that gap was invisible until now). Mirrors
+                        // the Horse/Camel item lookup pattern exactly, using the same StringIds
+                        // EquipHero.cs uses to actually equip these mounts.
+                        if (UseDragon)
+                        {
+                            generator.TD(() =>
+                            {
+                                generator.P("Dragon (RoT)");
+                                var exampleItem = CampaignHelpers.AllItems
+                                    .FirstOrDefault(item => item.StringId == EquipHero.GetDragonId(0));
+                                if (exampleItem != null)
+                                    generator.Img("equip-img", exampleItem);
+                            });
+                        }
+                        if (UseChariot)
+                        {
+                            generator.TD(() =>
+                            {
+                                generator.P("Chariot (RoT)");
+                                var exampleItem = CampaignHelpers.AllItems
+                                    .FirstOrDefault(item => item.StringId == EquipHero.GetChariotId(0));
+                                if (exampleItem != null)
+                                    generator.Img("equip-img", exampleItem);
+                            });
+                        }
+                        if (UseMammoth)
+                        {
+                            generator.TD(() =>
+                            {
+                                generator.P("Mammoth (RoT)");
+                                var exampleItem = CampaignHelpers.AllItems
+                                    .FirstOrDefault(item => item.StringId == EquipHero.MammothId);
+                                if (exampleItem != null)
+                                    generator.Img("equip-img", exampleItem);
+                            });
+                        }
+                        if (UseElephant)
+                        {
+                            generator.TD(() =>
+                            {
+                                generator.P("Elephant (RoT)");
+                                var exampleItem = CampaignHelpers.AllItems
+                                    .FirstOrDefault(item => item.StringId == EquipHero.ElephantId);
                                 if (exampleItem != null)
                                     generator.Img("equip-img", exampleItem);
                             });

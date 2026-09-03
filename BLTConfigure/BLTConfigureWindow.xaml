@@ -195,6 +195,16 @@
                             <Button Name="UploadDocumentationButton" Margin="15 10" HorizontalAlignment="Left"
                                     Click="UploadDocumentation_OnClick">Upload Documentation</Button>
                             <TextBlock Margin="15 5" Name="UploadStatus"/>
+                            <Separator Height="20"/>
+                            <TextBlock>
+                                Renders a portrait and stats for every currently-adopted hero and uploads it as a
+                                gallery page to the same Neocities site (uses the username/password entered above).
+                            </TextBlock>
+                            <WrapPanel Margin="15 5" Orientation="Horizontal">
+                                <Button Name="GenerateHeroGalleryButton" Margin="0 0 15 0" HorizontalAlignment="Left"
+                                        Click="GenerateHeroGalleryButton_OnClick">Generate Hero Gallery</Button>
+                            </WrapPanel>
+                            <TextBlock Margin="15 5" Name="GenerateHeroGalleryResult"/>
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>

@@ -895,6 +895,13 @@ namespace BLTAdoptAHero
 
         #region Prestige
         public int GetPrestigeLevel(Hero hero) => GetHeroData(hero).PrestigeLevel;
+
+        // Added for the Hero Appearance Gallery (2026-08-17) - AchievementStatsData already
+        // tracks these per-hero via IncreaseKills/IncreaseStatistic elsewhere in this file, but
+        // nothing publicly exposed a read-only accessor for them until now.
+        public int GetTotalKills(Hero hero) => GetHeroData(hero).AchievementStats.GetTotalValue(AchievementStatsData.Statistic.TotalKills);
+
+        public int GetTotalBattles(Hero hero) => GetHeroData(hero).AchievementStats.GetTotalValue(AchievementStatsData.Statistic.Battles);
         public int GetPrestigeKillCount(Hero hero) => GetHeroData(hero).PrestigeKillCount;
         public void IncrementPrestigeKill(Hero hero) => GetHeroData(hero).PrestigeKillCount++;
 

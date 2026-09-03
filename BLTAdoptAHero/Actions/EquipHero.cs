@@ -511,14 +511,27 @@ namespace BLTAdoptAHero
                 if (item != null)
                     adoptedHero.BattleEquipment[EquipmentIndex.Horse] = new EquipmentElement(item);
             }
+            else if (classDef?.UseMammoth == true)
+            {
+                var item = CampaignHelpers.AllItems.FirstOrDefault(i => i.StringId == MammothId);
+                if (item != null)
+                    adoptedHero.BattleEquipment[EquipmentIndex.Horse] = new EquipmentElement(item);
+            }
+            else if (classDef?.UseElephant == true)
+            {
+                var item = CampaignHelpers.AllItems.FirstOrDefault(i => i.StringId == ElephantId);
+                if (item != null)
+                    adoptedHero.BattleEquipment[EquipmentIndex.Horse] = new EquipmentElement(item);
+            }
 
             UpgradeCivilian(adoptedHero, targetTier, replaceSameTier, cultureFilter, cultureFilterSpecified, restrictedItemIds);
         }
 
         public static bool HeroShouldUseHorse(Hero adoptedHero, HeroClassDef classDef)
         {
-            // Dragon and chariot are assigned separately, skip standard horse logic for them
-            if (classDef?.UseDragon == true || classDef?.UseChariot == true)
+            // Dragon/chariot/mammoth/elephant are assigned separately, skip standard horse logic for them
+            if (classDef?.UseDragon == true || classDef?.UseChariot == true
+                || classDef?.UseMammoth == true || classDef?.UseElephant == true)
                 return false;
 
             var heroWeapons = adoptedHero.BattleEquipment.YieldFilledWeaponSlots().Select(e => e.element.Item).ToList();
@@ -610,6 +623,20 @@ namespace BLTAdoptAHero
         private static readonly string[] DragonFlyingIds  = { "dragon_black2", "dragon_brown2", "dragon_gold2" };
         private static readonly string[] ChariotBasicIds  = { "chariot1", "chariot2", "chariot3" };
         private static readonly string[] ChariotAdvancedIds = { "chariot4", "chariot5", "chariot6" };
+        // RoT: single items, not tiered like dragon/chariot
+        public const string MammothId = "mammoth";
+        public const string ElephantId = "elephant";
+
+        // Dragons fly, so unlike the other exotic mounts they're fine in naval missions (RoT's own
+        // authors confirm dragons in naval battles are intended) - only chariot/mammoth/elephant
+        // need dismounting there. All four still can't be used in hideout/siege missions.
+        public static readonly string[] DragonMountIds = DragonGroundIds.Concat(DragonFlyingIds).ToArray();
+
+        // All RoT exotic mount item StringIds - used to detect and dismount them (except dragon in
+        // naval - see DragonMountIds above) for the duration of hideout/siege/naval missions.
+        public static readonly string[] ExoticMountIds =
+            DragonMountIds.Concat(ChariotBasicIds).Concat(ChariotAdvancedIds)
+                .Concat(new[] { MammothId, ElephantId }).ToArray();
 
 
         // Returns the best modifier for a given item type (armor, weapon, mount, harness)

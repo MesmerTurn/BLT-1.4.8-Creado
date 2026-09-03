@@ -598,6 +598,8 @@
     <Compile Include="Behaviors\BLTAgentModifierBehavior.cs" />
     <Compile Include="Behaviors\BLTAgentPfxBehaviour.cs" />
     <Compile Include="Documentation\DocumentationGenerator.cs" />
+    <Compile Include="Documentation\CharacterPortraitRenderer.cs" />
+    <Compile Include="Documentation\ItemPortraitRenderer.cs" />
     <Compile Include="Documentation\DocumentationHelpers.cs" />
     <Compile Include="Documentation\DocumentAttribute.cs" />
     <Compile Include="Documentation\IDocumentable.cs" />

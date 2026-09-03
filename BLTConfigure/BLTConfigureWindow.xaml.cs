@@ -22,6 +22,7 @@ using System.Windows.Navigation;
 using BannerlordTwitch;
 using BannerlordTwitch.Annotations;
 using BannerlordTwitch.Util;
+using BLTAdoptAHero.GalleryGeneration;
 using BLTConfigure.UI;
 using Newtonsoft.Json;
 using TaleWorlds.CampaignSystem;
@@ -485,7 +486,19 @@ namespace BLTConfigure
             }
 
             UploadDocumentationButton.IsEnabled = false;
+            await UploadDirectoryToNeocities(DocumentationGenerator.DocumentationRootDir,
+                status => UploadStatus.Text = status,
+                error => { UploadStatus.Text = error; UploadStatus.Foreground = ErrorStatusForeground; });
+            UploadDocumentationButton.IsEnabled = true;
+        }
 
+        // Extracted 2026-08-17 from the body that used to live directly in
+        // UploadDocumentation_OnClick, so the new Hero Appearance Gallery upload button can reuse
+        // the exact same Neocities list/delete/upload flow without duplicating it. Behavior for
+        // the documentation upload button is unchanged - this is the same code, just callable
+        // with a different directory and status callbacks.
+        private async Task UploadDirectoryToNeocities(string directory, Action<string> onStatus, Action<string> onError)
+        {
             try
             {
                 using var httpClient = new HttpClient(new HttpClientHandler { UseProxy = false });
@@ -493,32 +506,47 @@ namespace BLTConfigure
                     Convert.ToBase64String(
                         Encoding.ASCII.GetBytes($"{NeocitiesUsername.Text}:{NeocitiesPassword.Password}")));
 
-                UploadStatus.Text = "Checking for existing files on the site...";
+                onStatus("Checking for existing files on the site...");
 
                 var filesResponse = await httpClient.GetAsync($"https://neocities.org/api/list");
                 filesResponse.EnsureSuccessStatusCode();
 
                 var result = JsonConvert.DeserializeObject<ResponseFiles>(await filesResponse.Content.ReadAsStringAsync());
+
+                // 2026-08-17: this used to delete EVERY existing file on the site except
+                // index.html, which was correct back when only the documentation page lived
+                // here - but once the Hero Appearance Gallery started uploading to the same
+                // Neocities site, calling this for the gallery wiped out the documentation
+                // page's style.css and images (and vice versa), since neither of those is named
+                // "index.html". Confirmed live: generating the gallery broke the already-live
+                // documentation page's layout. Now only deletes existing site files that share a
+                // filename with something in THIS upload's own directory - i.e. "replace what
+                // I'm about to re-upload", never touch files belonging to a different page/
+                // feature that happens to live on the same site.
+                var uploadFileNames = new HashSet<string>(
+                    Directory.GetFiles(directory).Select(Path.GetFileName),
+                    StringComparer.OrdinalIgnoreCase);
                 var deleteList = result.files
                     .Select(f => f.path)
-                    .Where(f => f.ToLower() != "index.html")
+                    .Where(f => f.ToLower() != "index.html" && uploadFileNames.Contains(Path.GetFileName(f)))
                     .Select(f => new KeyValuePair<string, string>("filenames[]", f))
                     .ToList();
                 if (deleteList.Any())
                 {
-                    UploadStatus.Text = "Deleting existing files from the site...";
+                    onStatus("Deleting existing files from the site...");
                     var deleteResponse = await httpClient.PostAsync($"https://neocities.org/api/delete",
                         new FormUrlEncodedContent(deleteList));
                     deleteResponse.EnsureSuccessStatusCode();
                 }
 
-                UploadStatus.Text = "Upload in progress (might take a few seconds or longer)...";
+                string[] files = Directory.GetFiles(directory);
+                onStatus("Upload in progress (might take a few seconds or longer)...");
 
                 const int chunkSize = 20;
                 int filesDone = 0;
                 while (filesDone < files.Length)
                 {
-                    UploadStatus.Text = $"Uploading {filesDone} / {files.Length}...";
+                    onStatus($"Uploading {filesDone} / {files.Length}...");
                     var chunk = files.Skip(filesDone).Take(chunkSize);
                     filesDone += chunkSize;
 
@@ -537,15 +565,42 @@ namespace BLTConfigure
                     response.EnsureSuccessStatusCode();
                 }
 
-                UploadStatus.Text = "Upload complete!";
+                onStatus("Upload complete!");
             }
             catch (Exception ex)
             {
-                UploadStatus.Text = $"Error uploading: {ex.Message}";
-                UploadStatus.Foreground = ErrorStatusForeground;
+                onError($"Error uploading: {ex.Message}");
+            }
+        }
+
+        private async void GenerateHeroGalleryButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (Campaign.Current?.GameStarted != true)
+            {
+                GenerateHeroGalleryResult.Foreground = ErrorStatusForeground;
+                GenerateHeroGalleryResult.Text =
+                    "You need to start the campaign, or load a save before generating the hero gallery!";
+                return;
             }
 
-            UploadDocumentationButton.IsEnabled = true;
+            try
+            {
+                GenerateHeroGalleryButton.IsEnabled = false;
+                GenerateHeroGalleryResult.Text = "Generating Hero Gallery...";
+                int count = await HeroGalleryGenerator.GenerateAsync();
+                GenerateHeroGalleryResult.Text = $"Gallery generated: {count} hero(es). Uploading...";
+
+                await UploadDirectoryToNeocities(HeroGalleryGenerator.GalleryRootDir,
+                    status => GenerateHeroGalleryResult.Text = status,
+                    error => { GenerateHeroGalleryResult.Text = error; GenerateHeroGalleryResult.Foreground = ErrorStatusForeground; });
+            }
+            catch (Exception ex)
+            {
+                GenerateHeroGalleryResult.Foreground = ErrorStatusForeground;
+                GenerateHeroGalleryResult.Text = $"Couldn't generate the hero gallery: {ex.Message}";
+            }
+
+            GenerateHeroGalleryButton.IsEnabled = true;
         }
 
         private void CopyOverlayUrlButton_OnClick(object sender, RoutedEventArgs e)

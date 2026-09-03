@@ -1,3 +1,4 @@
+using System;
 using HarmonyLib;
 using JetBrains.Annotations;
 using TaleWorlds.CampaignSystem;
@@ -26,6 +27,42 @@ namespace BLTAdoptAHero.Patches
             if (prestige > 0 && BLTAdoptAHeroModule.CommonConfig.PrestigeConfig != null)
                 __result += BLTAdoptAHeroModule.CommonConfig.PrestigeConfig.GetCumulativeHPBonus(prestige);
         }
+    }
+
+    // 2026-08-17: extensibility point for other mods (e.g. PeasantRebellionPerks) that need to add
+    // their own multiplier to an agent's max HP. Bisection under game v1.4.8 found that a SEPARATE
+    // Harmony instance (a different mod's own `new Harmony(id)`, in a different assembly) patching
+    // Agent.HealthLimit OR Agent.BaseHealthLimit itself - regardless of patch mechanism
+    // (manual harmony.Patch(AccessTools...) or [HarmonyPatch]+PatchAll(), both tested) - makes
+    // every agent in the game render lying on its side, including plain vanilla troops with no
+    // adopted hero. This getter already carries two postfixes from BLTAdoptAHero's own Harmony
+    // instance (PrestigeHealthPatch above, T8HealthPatch) with zero issue, so external mods should
+    // route their HP bonus through here instead of patching this getter themselves.
+    public static class ExternalHealthLimitModifiers
+    {
+        public static event Func<Agent, float> Multiplier;
+
+        internal static void Apply(Agent instance, ref float result)
+        {
+            if (Multiplier == null) return;
+            foreach (Func<Agent, float> handler in Multiplier.GetInvocationList())
+            {
+                try
+                {
+                    float m = handler(instance);
+                    if (m > 0f) result *= m;
+                }
+                catch { /* one external handler's failure shouldn't break the others */ }
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(Agent), "BaseHealthLimit", MethodType.Getter), UsedImplicitly]
+    public static class ExternalHealthLimitPatch
+    {
+        [UsedImplicitly]
+        public static void Postfix(Agent __instance, ref float __result)
+            => ExternalHealthLimitModifiers.Apply(__instance, ref __result);
     }
 
     // Damage: multiply blow damage by prestige damage bonus
